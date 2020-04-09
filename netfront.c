@@ -584,8 +584,6 @@ void shutdown_netfront(struct netfront_dev *dev)
     list->refcount--;
     if (list->refcount == 0) {
         _shutdown_netfront(dev);
-        free(dev->nodename);
-        free(dev);
 
         to_del = list;
         if (to_del == dev_list) {
