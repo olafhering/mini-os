@@ -513,7 +513,7 @@ done:
             err = xenbus_wait_for_state_change(path, &state, &dev->events);
         if (state != XenbusStateConnected) {
             printk("backend not avalable, state=%d\n", state);
-            xenbus_unwatch_path_token(XBT_NIL, path, path);
+            free(xenbus_unwatch_path_token(XBT_NIL, path, path));
             goto error;
         }
 

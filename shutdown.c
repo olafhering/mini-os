@@ -71,7 +71,7 @@ static void shutdown_thread(void *p)
     char *shutdown, *err;
     unsigned int shutdown_reason;
 
-    xenbus_watch_path_token(XBT_NIL, path, token, &events);
+    free(xenbus_watch_path_token(XBT_NIL, path, token, &events));
 
     for ( ;; ) {
         xenbus_wait_for_watch(&events);

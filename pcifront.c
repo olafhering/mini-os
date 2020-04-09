@@ -70,28 +70,28 @@ void pcifront_watches(void *opaque)
 
     while (1) {
         printk("pcifront_watches: waiting for backend path to appear %s\n", path);
-        xenbus_watch_path_token(XBT_NIL, path, path, &events);
+        free(xenbus_watch_path_token(XBT_NIL, path, path, &events));
         while ((err = xenbus_read(XBT_NIL, path, &be_path)) != NULL) {
             free(err);
             xenbus_wait_for_watch(&events);
         }
-        xenbus_unwatch_path_token(XBT_NIL, path, path);
+        free(xenbus_unwatch_path_token(XBT_NIL, path, path));
         printk("pcifront_watches: waiting for backend to get into the right state %s\n", be_path);
         be_state = (char *) malloc(strlen(be_path) +  7);
         snprintf(be_state, strlen(be_path) +  7, "%s/state", be_path);
-        xenbus_watch_path_token(XBT_NIL, be_state, be_state, &events);
+        free(xenbus_watch_path_token(XBT_NIL, be_state, be_state, &events));
         while ((err = xenbus_read(XBT_NIL, be_state, &msg)) != NULL || msg[0] > '4') {
             free(msg);
             free(err);
             xenbus_wait_for_watch(&events);
         }
-        xenbus_unwatch_path_token(XBT_NIL, be_state, be_state);
+        free(xenbus_unwatch_path_token(XBT_NIL, be_state, be_state));
         if (init_pcifront(NULL) == NULL) {
             free(be_state);
             free(be_path);
             continue;
         }
-        xenbus_watch_path_token(XBT_NIL, be_state, be_state, &events);
+        free(xenbus_watch_path_token(XBT_NIL, be_state, be_state, &events));
         state = XenbusStateConnected;
         printk("pcifront_watches: waiting for backend events %s\n", be_state);
         while ((err = xenbus_wait_for_state_change(be_state, &state, &events)) == NULL &&
@@ -103,10 +103,9 @@ void pcifront_watches(void *opaque)
                 if ((err = xenbus_switch_state(XBT_NIL, fe_state, XenbusStateReconfiguring)) != NULL) {
                     printk("pcifront_watches: error changing state to %d: %s\n",
                             XenbusStateReconfiguring, err);
-                    if (!strcmp(err, "ENOENT")) {
-                        xenbus_write(XBT_NIL, fe_state, "7");
-                        free(err);
-                    }
+                    if (!strcmp(err, "ENOENT"))
+                        free(xenbus_write(XBT_NIL, fe_state, "7"));
+                    free(err);
                 }
             } else if (state == XenbusStateReconfigured) {
                 printk("pcifront_watches: writing %s %d\n", fe_state, XenbusStateConnected);
@@ -114,10 +113,9 @@ void pcifront_watches(void *opaque)
                 if ((err = xenbus_switch_state(XBT_NIL, fe_state, XenbusStateConnected)) != NULL) {
                     printk("pcifront_watches: error changing state to %d: %s\n",
                             XenbusStateConnected, err);
-                    if (!strcmp(err, "ENOENT")) {
-                        xenbus_write(XBT_NIL, fe_state, "4");
-                        free(err);
-                    }
+                    if (!strcmp(err, "ENOENT"))
+                        free(xenbus_write(XBT_NIL, fe_state, "4"));
+                    free(err);
                 }
             } else if (state == XenbusStateClosing)
                 break;
@@ -135,7 +133,7 @@ void pcifront_watches(void *opaque)
         pcidev = NULL;
     }
 
-    xenbus_unwatch_path_token(XBT_NIL, path, path);
+    free(xenbus_unwatch_path_token(XBT_NIL, path, path));
 }
 
 struct pcifront_dev *init_pcifront(char *_nodename)
@@ -243,7 +241,7 @@ done:
         XenbusState state;
         snprintf(path, sizeof(path), "%s/state", dev->backend);
 
-        xenbus_watch_path_token(XBT_NIL, path, path, &dev->events);
+        free(xenbus_watch_path_token(XBT_NIL, path, path, &dev->events));
 
         err = NULL;
         state = xenbus_read_integer(path);

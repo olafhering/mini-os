@@ -163,7 +163,7 @@ done:
 
         snprintf(path, sizeof(path), "%s/state", dev->backend);
 
-        xenbus_watch_path_token(XBT_NIL, path, path, &dev->events);
+        free(xenbus_watch_path_token(XBT_NIL, path, path, &dev->events));
 
         err = NULL;
         state = xenbus_read_integer(path);
@@ -530,7 +530,7 @@ done:
 
         snprintf(path, sizeof(path), "%s/state", dev->backend);
 
-        xenbus_watch_path_token(XBT_NIL, path, path, &dev->events);
+        free(xenbus_watch_path_token(XBT_NIL, path, path, &dev->events));
 
         err = NULL;
         state = xenbus_read_integer(path);

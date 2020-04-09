@@ -200,7 +200,7 @@ done:
 
         snprintf(path, sizeof(path), "%s/state", dev->backend);
 
-        xenbus_watch_path_token(XBT_NIL, path, path, &dev->events);
+        free(xenbus_watch_path_token(XBT_NIL, path, path, &dev->events));
 
         msg = NULL;
         state = xenbus_read_integer(path);
@@ -208,7 +208,7 @@ done:
             msg = xenbus_wait_for_state_change(path, &state, &dev->events);
         if (msg != NULL || state != XenbusStateConnected) {
             printk("backend not available, state=%d\n", state);
-            xenbus_unwatch_path_token(XBT_NIL, path, path);
+            free(xenbus_unwatch_path_token(XBT_NIL, path, path));
             goto error;
         }
 

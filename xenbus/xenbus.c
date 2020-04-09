@@ -198,6 +198,8 @@ exit:
         }
         if (msg == NULL && msg2 != NULL)
             msg = msg2;
+        else
+            free(msg2);
     } while (retry);
 
     return msg;
