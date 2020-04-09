@@ -413,9 +413,11 @@ void resume_xenbus(int canceled)
 
             rep = xenbus_msg_reply(XS_WATCH, XBT_NIL, req, ARRAY_SIZE(req));
             msg = errmsg(rep);
-            if (msg)
+            if (msg) {
                 xprintk("error on XS_WATCH: %s\n", msg);
-            free(rep);
+                free(msg);
+            } else
+                free(rep);
         }
     }
 
