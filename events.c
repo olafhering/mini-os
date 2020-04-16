@@ -23,7 +23,7 @@
 #include <mini-os/lib.h>
 #include <xen/xsm/flask_op.h>
 
-#define NR_EVS 1024
+#define NR_EVS EVTCHN_2L_NR_CHANNELS
 
 /* this represents a event handler. Chaining or sharing is not allowed */
 typedef struct _ev_action_t {
