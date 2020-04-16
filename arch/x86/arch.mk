@@ -26,3 +26,5 @@ ifeq ($(CONFIG_PARAVIRT),n)
 ARCH_LDFLAGS_FINAL := --oformat=elf32-i386
 ARCH_AS_DEPS += x86_hvm.S
 endif
+
+ARCH_LDFLAGS_FINAL += -m elf_i386
