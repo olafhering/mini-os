@@ -1472,6 +1472,11 @@ int tcsetattr(int fildes, int action, const struct termios *tios)
             return -1;
     }
 
+    if (files[fildes].cons.dev == NULL) {
+        errno = ENOSYS;
+        return -1;
+    }
+
     if (tios->c_oflag & OPOST)
         files[fildes].cons.dev->is_raw = false;
     else
@@ -1490,6 +1495,11 @@ int tcgetattr(int fildes, struct termios *tios)
     if (files[fildes].type != FTYPE_CONSOLE) {
         errno = ENOTTY;
         return -1;
+    }
+
+    if (files[fildes].cons.dev == NULL) {
+        errno = ENOSYS;
+        return 0;
     }
 
     if (tios == NULL) {
