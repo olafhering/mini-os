@@ -33,6 +33,19 @@ endif
 #
 ifneq ($(XEN_ROOT),)
 MINIOS_ROOT=$(XEN_ROOT)/extras/mini-os
+
+-include $(XEN_ROOT)/stubdom/mini-os.mk
+
+XENSTORE_CPPFLAGS ?= -isystem $(XEN_ROOT)/tools/xenstore/include
+TOOLCORE_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/toolcore
+TOOLLOG_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/toollog
+EVTCHN_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/evtchn
+GNTTAB_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/gnttab
+CALL_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/call
+FOREIGNMEMORY_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/foreignmemory
+DEVICEMODEL_PATH ?= $(XEN_ROOT)/stubdom/libs-$(MINIOS_TARGET_ARCH)/devicemodel
+CTRL_PATH ?= $(XEN_ROOT)/stubdom/libxc-$(MINIOS_TARGET_ARCH)
+GUEST_PATH ?= $(XEN_ROOT)/stubdom/libxc-$(MINIOS_TARGET_ARCH)
 else
 MINIOS_ROOT=$(TOPLEVEL_DIR)
 endif
@@ -93,7 +106,7 @@ DEF_CPPFLAGS += -D__MINIOS__
 ifeq ($(libc),y)
 DEF_CPPFLAGS += -DHAVE_LIBC
 DEF_CPPFLAGS += -isystem $(MINIOS_ROOT)/include/posix
-DEF_CPPFLAGS += -isystem $(XEN_ROOT)/tools/xenstore/include
+DEF_CPPFLAGS += $(XENSTORE_CPPFLAGS)
 endif
 
 ifneq ($(LWIPDIR),)
