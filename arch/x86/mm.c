@@ -695,6 +695,7 @@ int do_map_frames(unsigned long va,
         pgt[l1_table_offset(va)] = (pgentry_t)
             (((mfns[done * stride] + done * incr) << PAGE_SHIFT) | prot);
         done++;
+        va += PAGE_SIZE;
 #endif
     }
 
