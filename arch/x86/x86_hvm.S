@@ -20,7 +20,7 @@ _start:
 #endif /* __x86_64__ */
 
         mov %cr0, %eax
-        or $X86_CR0_PG, %eax
+        or $(X86_CR0_PG | X86_CR0_WP), %eax
         mov %eax, %cr0
 
         lgdt gdt_ptr
