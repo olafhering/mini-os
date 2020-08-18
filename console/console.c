@@ -122,21 +122,21 @@ void console_print(struct consfront_dev *dev, char *data, int length)
 
 void print(int direct, const char *fmt, va_list args)
 {
-    static char   buf[1024];
+    static char __print_buf[1024];
     
-    (void)vsnprintf(buf, sizeof(buf), fmt, args);
+    (void)vsnprintf(__print_buf, sizeof(__print_buf), fmt, args);
 
     if(direct)
     {
-        (void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(buf), buf);
+        (void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(__print_buf), __print_buf);
         return;
     } else {
 #ifndef CONFIG_USE_XEN_CONSOLE
     if(!console_initialised)
 #endif    
-            (void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(buf), buf);
+            (void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(__print_buf), __print_buf);
         
-        console_print(NULL, buf, strlen(buf));
+        console_print(NULL, __print_buf, strlen(__print_buf));
     }
 }
 
