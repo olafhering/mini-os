@@ -53,6 +53,21 @@ arch_fini(void)
 {
 }
 
+void arch_pre_suspend(void)
+{
+}
+
+int arch_suspend(void)
+{
+    printk("Suspend not supported on ARM. Aborting.");
+    do_exit();
+    return 1;
+}
+
+void arch_post_suspend(int canceled)
+{
+}
+
 void
 arch_do_exit(void)
 {

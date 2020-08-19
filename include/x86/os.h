@@ -73,6 +73,7 @@ void xen_callback_vector(void);
 #endif
 
 void arch_pre_suspend(void);
+int  arch_suspend(void);
 void arch_post_suspend(int canceled);
 void arch_fini(void);
 

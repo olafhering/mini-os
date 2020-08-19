@@ -46,8 +46,6 @@
 #include <mini-os/xmalloc.h>
 
 
-extern start_info_t *start_info_ptr;
-
 #ifdef CONFIG_XENBUS
 static const char *path = "control/shutdown";
 static const char *token = "control/shutdown";
@@ -140,13 +138,7 @@ void kernel_suspend(void)
     pre_suspend();
     arch_pre_suspend();
 
-    /*
-     * This hypercall returns 1 if the suspend
-     * was cancelled and 0 if resuming in a new domain
-     *
-     * TODO Fix this for ARM
-     */
-    rc = HYPERVISOR_suspend(virt_to_mfn(start_info_ptr));
+    rc = arch_suspend();
 
     arch_post_suspend(rc);
     post_suspend(rc);

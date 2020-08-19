@@ -249,6 +249,15 @@ void arch_pre_suspend(void)
     arch_mm_pre_suspend();
 }
 
+int arch_suspend(void)
+{
+    /*
+     * This hypercall returns 1 if the suspend
+     * was cancelled and 0 if resuming in a new domain
+     */
+    return HYPERVISOR_suspend(virt_to_mfn(start_info_ptr));
+}
+
 void arch_post_suspend(int canceled)
 {
 #if CONFIG_PARAVIRT
