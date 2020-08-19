@@ -77,7 +77,7 @@ __attribute__((weak)) int app_main(void *p)
     return 0;
 }
 
-void start_kernel(void* par)
+void start_kernel(void)
 {
     /* Set up events. */
     init_events();
@@ -107,7 +107,7 @@ void start_kernel(void* par)
 
 #ifdef CONFIG_XENBUS
     /* Init shutdown thread */
-    init_shutdown((start_info_t *)par);
+    init_shutdown();
 #endif
 
     /* Call (possibly overridden) app_main() */

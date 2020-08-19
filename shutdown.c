@@ -46,7 +46,7 @@
 #include <mini-os/xmalloc.h>
 
 
-static start_info_t *start_info_ptr;
+extern start_info_t *start_info_ptr;
 
 #ifdef CONFIG_XENBUS
 static const char *path = "control/shutdown";
@@ -111,10 +111,8 @@ static void shutdown_thread(void *p)
     }
 }
 
-void init_shutdown(start_info_t *si)
+void init_shutdown(void)
 {
-    start_info_ptr = si;
-
     end_shutdown_thread = 0;
     create_thread("shutdown", shutdown_thread, NULL);
 }
@@ -145,6 +143,8 @@ void kernel_suspend(void)
     /*
      * This hypercall returns 1 if the suspend
      * was cancelled and 0 if resuming in a new domain
+     *
+     * TODO Fix this for ARM
      */
     rc = HYPERVISOR_suspend(virt_to_mfn(start_info_ptr));
 

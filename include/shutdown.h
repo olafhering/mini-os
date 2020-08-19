@@ -3,7 +3,7 @@
 
 #include <mini-os/hypervisor.h>
 
-void init_shutdown(start_info_t *si);
+void init_shutdown(void);
 void fini_shutdown(void);
 void kernel_suspend(void);
 

@@ -45,7 +45,7 @@ union start_info_union start_info_union;
 /*
  * This pointer holds a reference to the copy of the start_info struct.
  */
-static start_info_t *start_info_ptr;
+start_info_t *start_info_ptr;
 
 /*
  * Shared page for communicating with the hypervisor.
@@ -221,7 +221,7 @@ arch_init(void *par)
 #endif
 	start_info_ptr = (start_info_t *)par;
 
-	start_kernel((start_info_t *)par);
+	start_kernel();
 }
 
 void arch_pre_suspend(void)
