@@ -343,22 +343,34 @@ void start_networking(void)
   struct ip_addr ipaddr = { htonl(IF_IPADDR) };
   struct ip_addr netmask = { htonl(IF_NETMASK) };
   struct ip_addr gw = { 0 };
-  char *ip = NULL;
+  char *ip = NULL, *netmask_str = NULL, *gw_str = NULL;
 
   tprintk("Waiting for network.\n");
 
-  dev = init_netfront(NULL, NULL, rawmac, &ip);
+  dev = init_netfront(NULL, NULL, rawmac, &ip, &netmask_str, &gw_str);
   
   if (ip) {
     ipaddr.addr = inet_addr(ip);
-    if (IN_CLASSA(ntohl(ipaddr.addr)))
-      netmask.addr = htonl(IN_CLASSA_NET);
-    else if (IN_CLASSB(ntohl(ipaddr.addr)))
-      netmask.addr = htonl(IN_CLASSB_NET);
-    else if (IN_CLASSC(ntohl(ipaddr.addr)))
-      netmask.addr = htonl(IN_CLASSC_NET);
-    else
-      tprintk("Strange IP %s, leaving netmask to 0.\n", ip);
+    free(ip);
+
+    if (netmask_str) {
+        netmask.addr = inet_addr(netmask_str);
+        free(netmask_str);
+    } else {
+        if (IN_CLASSA(ntohl(ipaddr.addr)))
+            netmask.addr = htonl(IN_CLASSA_NET);
+        else if (IN_CLASSB(ntohl(ipaddr.addr)))
+            netmask.addr = htonl(IN_CLASSB_NET);
+        else if (IN_CLASSC(ntohl(ipaddr.addr)))
+            netmask.addr = htonl(IN_CLASSC_NET);
+        else
+            tprintk("Strange IP %s, leaving netmask to 0.\n", ip);
+    }
+
+    if (gw_str) {
+        gw.addr = inet_addr(gw_str);
+        free(gw_str);
+    }
   }
   tprintk("IP %x netmask %x gateway %x.\n",
           ntohl(ipaddr.addr), ntohl(netmask.addr), ntohl(gw.addr));

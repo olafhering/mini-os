@@ -71,6 +71,8 @@ struct netfront_dev_list {
     struct netfront_dev *dev;
     unsigned char rawmac[6];
     char *ip;
+    char *mask;
+    char *gw;
 
     int refcount;
 
@@ -81,7 +83,7 @@ static struct netfront_dev_list *dev_list = NULL;
 
 void init_rx_buffers(struct netfront_dev *dev);
 static struct netfront_dev *_init_netfront(struct netfront_dev *dev,
-                                           unsigned char rawmac[6], char **ip);
+                                           unsigned char rawmac[6], char **ip, char **mask, char **gw);
 static void _shutdown_netfront(struct netfront_dev *dev);
 void netfront_set_rx_handler(struct netfront_dev *dev,
                              void (*thenetif_rx)(unsigned char *data, int len,
@@ -301,7 +303,7 @@ struct netfront_dev *init_netfront(char *_nodename,
                                    void (*thenetif_rx)(unsigned char* data,
                                                        int len, void* arg),
                                    unsigned char rawmac[6],
-                                   char **ip)
+                                   char **ip, char **mask, char **gw)
 {
     char nodename[256];
     struct netfront_dev *dev;
@@ -344,7 +346,7 @@ struct netfront_dev *init_netfront(char *_nodename,
     ldev = malloc(sizeof(struct netfront_dev_list));
     memset(ldev, 0, sizeof(struct netfront_dev_list));
 
-    if (_init_netfront(dev, ldev->rawmac, &(ldev->ip))) {
+    if (_init_netfront(dev, ldev->rawmac, &(ldev->ip), &(ldev->mask), &(ldev->gw))) {
         ldev->dev = dev;
         ldev->refcount = 1;
         ldev->next = NULL;
@@ -374,6 +376,10 @@ out:
 	}
     if (ip)
         *ip = strdup(ldev->ip);
+    if (mask)
+        *mask = strdup(ldev->mask);
+    if (gw)
+        *gw = strdup(ldev->gw);
 
 err:
     return dev;
@@ -381,7 +387,7 @@ err:
 
 static struct netfront_dev *_init_netfront(struct netfront_dev *dev,
 					   unsigned char rawmac[6],
-					   char **ip)
+					   char **ip, char **mask, char **gw)
 {
     xenbus_transaction_t xbt;
     char* err = NULL;
@@ -518,8 +524,26 @@ done:
         }
 
         if (ip) {
+            char *p;
+
             snprintf(path, sizeof(path), "%s/ip", dev->backend);
             xenbus_read(XBT_NIL, path, ip);
+
+            if (mask) {
+                p = strchr(*ip, ' ');
+                if (p) {
+                    *p++ = '\0';
+                    *mask = p;
+
+                    if (gw) {
+                        p = strchr(p, ' ');
+                        if (p) {
+                            *p++ = '\0';
+                            *gw = p;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -676,7 +700,7 @@ void resume_netfront(void)
     struct netfront_dev_list *list;
 
     for (list = dev_list; list != NULL; list = list->next)
-        _init_netfront(list->dev, NULL, NULL);
+        _init_netfront(list->dev, NULL, NULL, NULL, NULL);
 }
 
 void init_rx_buffers(struct netfront_dev *dev)
