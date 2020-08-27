@@ -91,7 +91,7 @@ static struct semaphore net_sem = __SEMAPHORE_INITIALIZER(net_sem, 0);
 
 static void netfront_thread(void *p)
 {
-    net_dev = init_netfront(NULL, NULL, NULL, NULL);
+    net_dev = init_netfront(NULL, NULL, NULL, NULL, NULL, NULL);
     up(&net_sem);
 }
 #endif

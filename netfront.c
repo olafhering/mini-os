@@ -576,7 +576,7 @@ error:
 int netfront_tap_open(char *nodename) {
     struct netfront_dev *dev;
 
-    dev = init_netfront(nodename, NETIF_SELECT_RX, NULL, NULL);
+    dev = init_netfront(nodename, NETIF_SELECT_RX, NULL, NULL, NULL, NULL);
     if (!dev) {
 	printk("TAP open failed\n");
 	errno = EIO;
