@@ -36,6 +36,8 @@ struct net_buffer {
 };
 
 struct netfront_dev {
+    int refcount;
+
     domid_t dom;
 
     unsigned short tx_freelist[NET_TX_RING_SIZE + 1];
@@ -66,27 +68,19 @@ struct netfront_dev {
     void (*netif_rx)(unsigned char* data, int len, void* arg);
     void *netif_rx_arg;
 
-    struct netfront_dev_list *ldev;
-};
-
-struct netfront_dev_list {
-    struct netfront_dev *dev;
     unsigned char rawmac[6];
     char *ip;
     char *mask;
     char *gw;
 
-    int refcount;
-
-    struct netfront_dev_list *next;
+    struct netfront_dev *next;
 };
 
-static struct netfront_dev_list *dev_list = NULL;
+static struct netfront_dev *dev_list = NULL;
 
 void init_rx_buffers(struct netfront_dev *dev);
-static struct netfront_dev *_init_netfront(struct netfront_dev *dev,
-                                           unsigned char rawmac[6], char **ip, char **mask, char **gw);
-static void _shutdown_netfront(struct netfront_dev *dev);
+static struct netfront_dev *_init_netfront(struct netfront_dev *dev);
+static int _shutdown_netfront(struct netfront_dev *dev);
 void netfront_set_rx_handler(struct netfront_dev *dev,
                              void (*thenetif_rx)(unsigned char *data, int len,
                                                  void *arg),
@@ -276,6 +270,7 @@ static void free_netfront(struct netfront_dev *dev)
     mask_evtchn(dev->evtchn);
 
     free(dev->mac);
+    free(dev->ip);
     free(dev->backend);
 
     gnttab_end_access(dev->rx_ring_ref);
@@ -309,8 +304,7 @@ struct netfront_dev *init_netfront(char *_nodename,
 {
     char nodename[256];
     struct netfront_dev *dev;
-    struct netfront_dev_list *ldev = NULL;
-    struct netfront_dev_list *list = NULL;
+    struct netfront_dev *list;
     static int netfrontends = 0;
 
     if (!_nodename)
@@ -321,10 +315,9 @@ struct netfront_dev *init_netfront(char *_nodename,
     }
 
     /* Check if the device is already initialized */
-    for (list = dev_list; list != NULL; list = list->next) {
-        if (strcmp(nodename, list->dev->nodename) == 0) {
-            list->refcount++;
-            dev = list->dev;
+    for (dev = dev_list; dev != NULL; dev = dev->next) {
+        if (strcmp(nodename, dev->nodename) == 0) {
+            dev->refcount++;
             if (thenetif_rx)
                 netfront_set_rx_handler(dev, thenetif_rx, NULL);
             goto out;
@@ -345,40 +338,34 @@ struct netfront_dev *init_netfront(char *_nodename,
     dev->netif_rx = thenetif_rx;
     dev->netif_rx_arg = NULL;
 
-    ldev = malloc(sizeof(struct netfront_dev_list));
-    memset(ldev, 0, sizeof(struct netfront_dev_list));
-
-    if (_init_netfront(dev, ldev->rawmac, &(ldev->ip), &(ldev->mask), &(ldev->gw))) {
-        dev->ldev = ldev;
-        ldev->dev = dev;
-        ldev->refcount = 1;
-        ldev->next = NULL;
+    if (_init_netfront(dev)) {
+        dev->refcount = 1;
+        dev->next = NULL;
 
         if (!dev_list) {
-            dev_list = ldev;
+            dev_list = dev;
         } else {
             for (list = dev_list; list->next != NULL; list = list->next)
                 ;
-            list->next = ldev;
-		}
+            list->next = dev;
+        }
         netfrontends++;
     } else {
-        free(ldev);
         dev = NULL;
         goto err;
     }
 
 out:
     if (rawmac) {
-        rawmac[0] = ldev->rawmac[0];
-        rawmac[1] = ldev->rawmac[1];
-        rawmac[2] = ldev->rawmac[2];
-        rawmac[3] = ldev->rawmac[3];
-        rawmac[4] = ldev->rawmac[4];
-        rawmac[5] = ldev->rawmac[5];
+        rawmac[0] = dev->rawmac[0];
+        rawmac[1] = dev->rawmac[1];
+        rawmac[2] = dev->rawmac[2];
+        rawmac[3] = dev->rawmac[3];
+        rawmac[4] = dev->rawmac[4];
+        rawmac[5] = dev->rawmac[5];
 	}
     if (ip)
-        *ip = strdup(ldev->ip);
+        *ip = strdup(dev->ip);
 
 err:
     return dev;
@@ -386,17 +373,15 @@ err:
 
 char *netfront_get_netmask(struct netfront_dev *dev)
 {
-    return dev->ldev->mask ? strdup(dev->ldev->mask) : NULL;
+    return dev->mask ? strdup(dev->mask) : NULL;
 }
 
 char *netfront_get_gateway(struct netfront_dev *dev)
 {
-    return dev->ldev->gw ? strdup(dev->ldev->gw) : NULL;
+    return dev->gw ? strdup(dev->gw) : NULL;
 }
 
-static struct netfront_dev *_init_netfront(struct netfront_dev *dev,
-					   unsigned char rawmac[6],
-					   char **ip, char **mask, char **gw)
+static struct netfront_dev *_init_netfront(struct netfront_dev *dev)
 {
     xenbus_transaction_t xbt;
     char* err = NULL;
@@ -518,6 +503,8 @@ done:
     {
         XenbusState state;
         char path[strlen(dev->backend) + strlen("/state") + 1];
+        char *p;
+
         snprintf(path, sizeof(path), "%s/state", dev->backend);
 
         xenbus_watch_path_token(XBT_NIL, path, path, &dev->events);
@@ -532,26 +519,18 @@ done:
             goto error;
         }
 
-        if (ip) {
-            char *p;
+        snprintf(path, sizeof(path), "%s/ip", dev->backend);
+        xenbus_read(XBT_NIL, path, &dev->ip);
 
-            snprintf(path, sizeof(path), "%s/ip", dev->backend);
-            xenbus_read(XBT_NIL, path, ip);
+        p = strchr(dev->ip, ' ');
+        if (p) {
+            *p++ = '\0';
+            dev->mask = p;
 
-            if (mask) {
-                p = strchr(*ip, ' ');
-                if (p) {
-                    *p++ = '\0';
-                    *mask = p;
-
-                    if (gw) {
-                        p = strchr(p, ' ');
-                        if (p) {
-                            *p++ = '\0';
-                            *gw = p;
-                        }
-                    }
-                }
+            p = strchr(p, ' ');
+            if (p) {
+                *p++ = '\0';
+                dev->gw = p;
             }
         }
     }
@@ -563,14 +542,13 @@ done:
     /* Special conversion specifier 'hh' needed for __ia64__. Without
      * this mini-os panics with 'Unaligned reference'.
      */
-    if (rawmac)
-        sscanf(dev->mac,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-               &rawmac[0],
-               &rawmac[1],
-               &rawmac[2],
-               &rawmac[3],
-               &rawmac[4],
-               &rawmac[5]);
+    sscanf(dev->mac,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+           &dev->rawmac[0],
+           &dev->rawmac[1],
+           &dev->rawmac[2],
+           &dev->rawmac[3],
+           &dev->rawmac[4],
+           &dev->rawmac[5]);
 
     return dev;
 
@@ -600,38 +578,33 @@ int netfront_tap_open(char *nodename) {
 
 void shutdown_netfront(struct netfront_dev *dev)
 {
-    struct netfront_dev_list *list = NULL;
-    struct netfront_dev_list *to_del = NULL;
+    struct netfront_dev *list;
 
     /* Check this is a valid device */
-    for (list = dev_list; list != NULL; list = list->next) {
-        if (list->dev == dev)
-            break;
-    }
+    for (list = dev_list; list != NULL && list != dev; list = list->next);
 
     if (!list) {
         printk("Trying to shutdown an invalid netfront device (%p)\n", dev);
         return;
     }
 
-    list->refcount--;
-    if (list->refcount == 0) {
-        _shutdown_netfront(dev);
+    dev->refcount--;
+    if (dev->refcount == 0) {
+        if (_shutdown_netfront(dev))
+            return;
 
-        to_del = list;
-        if (to_del == dev_list) {
-            free(to_del);
-			dev_list = NULL;
+        if (dev == dev_list) {
+            dev_list = NULL;
         } else {
-            for (list = dev_list; list->next != to_del; list = list->next)
+            for (list = dev_list; list->next != dev; list = list->next)
                 ;
-            list->next = to_del->next;
-            free(to_del);
+            list->next = dev->next;
         }
+        free_netfront(dev);
     }
 }
 
-static void _shutdown_netfront(struct netfront_dev *dev)
+static int _shutdown_netfront(struct netfront_dev *dev)
 {
     char* err = NULL, *err2;
     XenbusState state;
@@ -692,24 +665,23 @@ close:
     err2 = xenbus_rm(XBT_NIL, nodename);
     free(err2);
 
-    if (!err)
-        free_netfront(dev);
+    return err ? -EBUSY : 0;
 }
 
 void suspend_netfront(void)
 {
-    struct netfront_dev_list *list;
+    struct netfront_dev *dev;
 
-    for (list = dev_list; list != NULL; list = list->next)
-        _shutdown_netfront(list->dev);
+    for (dev = dev_list; dev != NULL; dev = dev->next)
+        _shutdown_netfront(dev);
 }
 
 void resume_netfront(void)
 {
-    struct netfront_dev_list *list;
+    struct netfront_dev *dev;
 
-    for (list = dev_list; list != NULL; list = list->next)
-        _init_netfront(list->dev, NULL, NULL, NULL, NULL);
+    for (dev = dev_list; dev != NULL; dev = dev->next)
+        _init_netfront(dev);
 }
 
 void init_rx_buffers(struct netfront_dev *dev)
