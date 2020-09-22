@@ -347,7 +347,9 @@ void start_networking(void)
 
   tprintk("Waiting for network.\n");
 
-  dev = init_netfront(NULL, NULL, rawmac, &ip, &netmask_str, &gw_str);
+  dev = init_netfront(NULL, NULL, rawmac, &ip);
+  netmask_str = netfront_get_netmask(dev);
+  gw_str = netfront_get_gateway(dev);
   
   if (ip) {
     ipaddr.addr = inet_addr(ip);

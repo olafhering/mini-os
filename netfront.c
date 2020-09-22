@@ -65,6 +65,8 @@ struct netfront_dev {
 
     void (*netif_rx)(unsigned char* data, int len, void* arg);
     void *netif_rx_arg;
+
+    struct netfront_dev_list *ldev;
 };
 
 struct netfront_dev_list {
@@ -303,7 +305,7 @@ struct netfront_dev *init_netfront(char *_nodename,
                                    void (*thenetif_rx)(unsigned char* data,
                                                        int len, void* arg),
                                    unsigned char rawmac[6],
-                                   char **ip, char **mask, char **gw)
+                                   char **ip)
 {
     char nodename[256];
     struct netfront_dev *dev;
@@ -347,6 +349,7 @@ struct netfront_dev *init_netfront(char *_nodename,
     memset(ldev, 0, sizeof(struct netfront_dev_list));
 
     if (_init_netfront(dev, ldev->rawmac, &(ldev->ip), &(ldev->mask), &(ldev->gw))) {
+        dev->ldev = ldev;
         ldev->dev = dev;
         ldev->refcount = 1;
         ldev->next = NULL;
@@ -376,13 +379,19 @@ out:
 	}
     if (ip)
         *ip = strdup(ldev->ip);
-    if (mask)
-        *mask = strdup(ldev->mask);
-    if (gw)
-        *gw = strdup(ldev->gw);
 
 err:
     return dev;
+}
+
+char *netfront_get_netmask(struct netfront_dev *dev)
+{
+    return dev->ldev->mask ? strdup(dev->ldev->mask) : NULL;
+}
+
+char *netfront_get_gateway(struct netfront_dev *dev)
+{
+    return dev->ldev->gw ? strdup(dev->ldev->gw) : NULL;
 }
 
 static struct netfront_dev *_init_netfront(struct netfront_dev *dev,
@@ -576,7 +585,7 @@ error:
 int netfront_tap_open(char *nodename) {
     struct netfront_dev *dev;
 
-    dev = init_netfront(nodename, NETIF_SELECT_RX, NULL, NULL, NULL, NULL);
+    dev = init_netfront(nodename, NETIF_SELECT_RX, NULL, NULL);
     if (!dev) {
 	printk("TAP open failed\n");
 	errno = EIO;

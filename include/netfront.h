@@ -7,7 +7,9 @@ struct netfront_dev *init_netfront(char *nodename,
                                    void (*netif_rx)(unsigned char *data,
                                                     int len, void* arg),
                                    unsigned char rawmac[6],
-                                   char **ip, char **mask, char **gw);
+                                   char **ip);
+char *netfront_get_netmask(struct netfront_dev *dev);
+char *netfront_get_gateway(struct netfront_dev *dev);
 void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len);
 void shutdown_netfront(struct netfront_dev *dev);
 void suspend_netfront(void);
