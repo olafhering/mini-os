@@ -383,6 +383,7 @@ char *netfront_get_gateway(struct netfront_dev *dev)
 
 static struct netfront_dev *_init_netfront(struct netfront_dev *dev)
 {
+    int domid;
     xenbus_transaction_t xbt;
     char* err = NULL;
     char* message=NULL;
@@ -392,6 +393,12 @@ static struct netfront_dev *_init_netfront(struct netfront_dev *dev)
     int retry=0;
     int i;
     char path[256];
+
+    snprintf(path, sizeof(path), "%s/backend-id", dev->nodename);
+    domid = xenbus_read_integer(path);
+    if (domid < 0)
+        return NULL;
+    dev->dom = domid;
 
     printk("net TX ring size %lu\n", (unsigned long) NET_TX_RING_SIZE);
     printk("net RX ring size %lu\n", (unsigned long) NET_RX_RING_SIZE);
@@ -407,8 +414,6 @@ static struct netfront_dev *_init_netfront(struct netfront_dev *dev)
         BUG_ON(dev->rx_buffers[i].page == NULL);
     }
 
-    snprintf(path, sizeof(path), "%s/backend-id", dev->nodename);
-    dev->dom = xenbus_read_integer(path);
 #ifdef HAVE_LIBC
     if (dev->netif_rx == NETIF_SELECT_RX)
         evtchn_alloc_unbound(dev->dom, netfront_select_handler, dev, &dev->evtchn);
