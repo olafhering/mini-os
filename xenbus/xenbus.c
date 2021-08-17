@@ -549,21 +549,6 @@ static char *errmsg(struct xsd_sockmsg *rep)
     return res;
 }
 
-/* Send a debug message to xenbus.  Can block. */
-static void xenbus_debug_msg(const char *msg)
-{
-    int len = strlen(msg);
-    struct write_req req[] = {
-        { "print", sizeof("print") },
-        { msg, len },
-        { "", 1 }};
-    struct xsd_sockmsg *reply;
-
-    reply = xenbus_msg_reply(XS_DEBUG, 0, req, ARRAY_SIZE(req));
-    printk("Got a reply, type %d, id %d, len %d.\n",
-            reply->type, reply->req_id, reply->len);
-}
-
 /* List the contents of a directory.  Returns a malloc()ed array of
    pointers to malloc()ed strings.  The array is NULL terminated.  May
    block. */
@@ -858,6 +843,22 @@ domid_t xenbus_get_self_id(void)
     return ret;
 }
 
+#ifdef CONFIG_TEST
+/* Send a debug message to xenbus.  Can block. */
+static void xenbus_debug_msg(const char *msg)
+{
+    int len = strlen(msg);
+    struct write_req req[] = {
+        { "print", sizeof("print") },
+        { msg, len },
+        { "", 1 }};
+    struct xsd_sockmsg *reply;
+
+    reply = xenbus_msg_reply(XS_DEBUG, 0, req, ARRAY_SIZE(req));
+    printk("Got a reply, type %d, id %d, len %d.\n",
+            reply->type, reply->req_id, reply->len);
+}
+
 static void do_ls_test(const char *pre)
 {
     char **dirs, *msg;
@@ -944,6 +945,7 @@ void test_xenbus(void)
     do_read_test("device/vif/0/flibble");
     printk("(Should have said ENOENT)\n");
 }
+#endif /* CONFIG_TEST */
 
 /*
  * Local variables:
