@@ -365,7 +365,7 @@ out:
         rawmac[5] = dev->rawmac[5];
 	}
     if (ip)
-        *ip = strdup(dev->ip);
+        *ip = dev->ip ? strdup(dev->ip) : NULL;
 
 err:
     return dev;
@@ -527,7 +527,7 @@ done:
         snprintf(path, sizeof(path), "%s/ip", dev->backend);
         xenbus_read(XBT_NIL, path, &dev->ip);
 
-        p = strchr(dev->ip, ' ');
+        p = dev->ip ? strchr(dev->ip, ' ') : NULL;
         if (p) {
             *p++ = '\0';
             dev->mask = p;
