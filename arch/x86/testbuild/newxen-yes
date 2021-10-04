@@ -13,10 +13,11 @@ CONFIG_FBFRONT = y
 CONFIG_KBDFRONT = y
 CONFIG_CONSFRONT = y
 CONFIG_XENBUS = y
-# XC is special: it needs support from outside
-CONFIG_XC = n
-# LWIP is special: it needs support from outside
-CONFIG_LWIP = n
 CONFIG_BALLOON = y
 CONFIG_USE_XEN_CONSOLE = y
 XEN_INTERFACE_VERSION=__XEN_LATEST_INTERFACE_VERSION__
+# The following are special: they need support from outside
+CONFIG_LIBXENCTRL = n
+CONFIG_LIBXENEVTCHN = n
+CONFIG_LIBXENGNTTAB = n
+CONFIG_LWIP = n
