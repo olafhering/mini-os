@@ -13,7 +13,8 @@ CONFIG_FBFRONT = y
 CONFIG_KBDFRONT = y
 CONFIG_CONSFRONT = y
 CONFIG_XENBUS = y
-CONFIG_XC = y
+# XC is special: it needs support from outside
+CONFIG_XC = n
 # LWIP is special: it needs support from outside
 CONFIG_LWIP = n
 CONFIG_BALLOON = y
