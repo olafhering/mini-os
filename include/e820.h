@@ -24,6 +24,10 @@
 #ifndef __E820_HEADER
 #define __E820_HEADER
 
+#if defined(__arm__) || defined(__aarch64__) || defined(CONFIG_PARAVIRT)
+#define CONFIG_E820_TRIVIAL
+#endif
+
 /* PC BIOS standard E820 types and structure. */
 #define E820_RAM          1
 #define E820_RESERVED     2
@@ -44,5 +48,7 @@ struct __packed e820entry {
 
 extern struct e820entry e820_map[];
 extern unsigned e820_entries;
+
+unsigned long e820_get_maxpfn(void);
 
 #endif /*__E820_HEADER*/

@@ -41,6 +41,7 @@ src-$(CONFIG_TPMFRONT) += tpmfront.c
 src-$(CONFIG_TPM_TIS) += tpm_tis.c
 src-$(CONFIG_TPMBACK) += tpmback.c
 src-y += daytime.c
+src-y += e820.c
 src-y += events.c
 src-$(CONFIG_FBFRONT) += fbfront.c
 src-y += gntmap.c
