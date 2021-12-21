@@ -22,11 +22,15 @@
  */
 
 #include <mini-os/os.h>
+#include <mini-os/console.h>
+#include <mini-os/e820.h>
 #include <mini-os/hypervisor.h>
 #include <mini-os/gnttab.h>
 #include <mini-os/mm.h>
 #include <mini-os/types.h>
+#include <xen/memory.h>
 
+#ifdef CONFIG_PARAVIRT
 grant_entry_v1_t *arch_init_gnttab(int nr_grant_frames)
 {
     struct gnttab_setup_table setup;
@@ -39,6 +43,33 @@ grant_entry_v1_t *arch_init_gnttab(int nr_grant_frames)
     HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
     return map_frames(frames, nr_grant_frames);
 }
+#else
+grant_entry_v1_t *arch_init_gnttab(int nr_grant_frames)
+{
+    int i, rc;
+    struct xen_add_to_physmap xatp;
+    unsigned long pfn;
+    unsigned long frames[nr_grant_frames];
+
+    pfn = e820_get_reserved_pfns(nr_grant_frames);
+    for ( i = 0; i < nr_grant_frames; i++ )
+    {
+        xatp.domid = DOMID_SELF;
+        xatp.idx = i;
+        xatp.space = XENMAPSPACE_grant_table;
+        xatp.gpfn = pfn + i;
+        rc = HYPERVISOR_memory_op(XENMEM_add_to_physmap, &xatp);
+        if ( rc )
+        {
+            xprintk("could not init grant table\n");
+            do_exit();
+        }
+        frames[i] = pfn + i;
+    }
+
+    return map_frames(frames, nr_grant_frames);
+}
+#endif
 
 void arch_suspend_gnttab(grant_entry_v1_t *gnttab_table, int nr_grant_frames)
 {
