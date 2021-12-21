@@ -29,6 +29,7 @@
 #include <mini-os/os.h>
 #include <mini-os/lib.h> /* for printk, memcpy */
 #include <mini-os/kernel.h>
+#include <mini-os/hypervisor.h>
 #include <xen/xen.h>
 #include <xen/arch-x86/cpuid.h>
 #include <xen/arch-x86/hvm/start_info.h>
@@ -60,13 +61,6 @@ shared_info_t *HYPERVISOR_shared_info;
 char stack[2*STACK_SIZE];
 
 extern char shared_info[PAGE_SIZE];
-
-#if defined(__x86_64__)
-#define __pte(x) ((pte_t) { (x) } )
-#else
-#define __pte(x) ({ unsigned long long _x = (x);        \
-    ((pte_t) {(unsigned long)(_x), (unsigned long)(_x>>32)}); })
-#endif
 
 static inline void fpu_init(void) {
 	asm volatile("fninit");
