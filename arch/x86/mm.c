@@ -837,53 +837,6 @@ void arch_init_mm(unsigned long* start_pfn_p, unsigned long* max_pfn_p)
 #endif
 }
 
-grant_entry_v1_t *arch_init_gnttab(int nr_grant_frames)
-{
-    struct gnttab_setup_table setup;
-    unsigned long frames[nr_grant_frames];
-
-    setup.dom = DOMID_SELF;
-    setup.nr_frames = nr_grant_frames;
-    set_xen_guest_handle(setup.frame_list, frames);
-
-    HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
-    return map_frames(frames, nr_grant_frames);
-}
-
-void arch_suspend_gnttab(grant_entry_v1_t *gnttab_table, int nr_grant_frames)
-{
-#ifdef CONFIG_PARAVIRT
-    int i;
-
-    for (i = 0; i < nr_grant_frames; i++) {
-        HYPERVISOR_update_va_mapping((unsigned long)(((char *)gnttab_table) + PAGE_SIZE * i),
-                (pte_t){0x0<<PAGE_SHIFT}, UVMF_INVLPG);
-    }
-#endif
-    return;
-}
-
-void arch_resume_gnttab(grant_entry_v1_t *gnttab_table, int nr_grant_frames)
-{
-    struct gnttab_setup_table setup;
-    unsigned long frames[nr_grant_frames];
-#ifdef CONFIG_PARAVIRT
-    int i;
-#endif
-    setup.dom = DOMID_SELF;
-    setup.nr_frames = nr_grant_frames;
-    set_xen_guest_handle(setup.frame_list, frames);
-
-    HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
-
-#ifdef CONFIG_PARAVIRT
-    for (i = 0; i < nr_grant_frames; i++) {
-        HYPERVISOR_update_va_mapping((unsigned long)(((char *)gnttab_table) + PAGE_SIZE * i),
-                (pte_t){(frames[i] << PAGE_SHIFT) | L1_PROT}, UVMF_INVLPG);
-    }
-#endif
-}
-
 unsigned long alloc_virt_kernel(unsigned n_pages)
 {
     unsigned long addr;
