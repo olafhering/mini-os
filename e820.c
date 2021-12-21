@@ -283,6 +283,56 @@ void arch_print_memmap(void)
         printk("%012lx-%012lx: %s\n", from, to, type);
     }
 }
+
+unsigned long e820_get_reserved_pfns(int pages)
+{
+    int i;
+    unsigned long last = 0, needed = (long)pages << PAGE_SHIFT;
+
+    for ( i = 0; i < e820_entries && e820_map[i].addr < last + needed; i++ )
+        last = e820_map[i].addr + e820_map[i].size;
+
+    if ( i == 0 || e820_map[i - 1].type != E820_RESERVED )
+        e820_insert_entry_at(i, last, needed, E820_RESERVED);
+    else
+        e820_map[i - 1].size += needed;
+
+    return last >> PAGE_SHIFT;
+}
+
+void e820_put_reserved_pfns(unsigned long start_pfn, int pages)
+{
+    int i;
+    unsigned long addr = start_pfn << PAGE_SHIFT;
+    unsigned long size = (long)pages << PAGE_SHIFT;
+
+    for ( i = 0;
+          i < e820_entries && addr >= e820_map[i].addr + e820_map[i].size;
+          i++ );
+
+    BUG_ON(i == e820_entries || e820_map[i].type != E820_RESERVED ||
+           addr + size > e820_map[i].addr + e820_map[i].size);
+
+    if ( addr == e820_map[i].addr )
+    {
+        e820_map[i].addr += size;
+        e820_map[i].size -= size;
+        if ( e820_map[i].size == 0 )
+            e820_remove_entry(i);
+        return;
+    }
+
+    if ( addr + size == e820_map[i].addr + e820_map[i].size )
+    {
+        e820_map[i].size -= size;
+        return;
+    }
+
+    e820_insert_entry_at(i + 1, addr + size,
+                         e820_map[i].addr + e820_map[i].size - addr - size,
+                         E820_RESERVED);
+    e820_map[i].size = addr - e820_map[i].addr;
+}
 #endif
 
 unsigned long e820_get_maxpfn(unsigned long pages)

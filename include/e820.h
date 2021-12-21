@@ -51,5 +51,9 @@ extern unsigned e820_entries;
 
 unsigned long e820_get_maxpfn(unsigned long pages);
 unsigned long e820_get_max_contig_pages(unsigned long pfn, unsigned long pages);
+#ifndef CONFIG_E820_TRIVIAL
+unsigned long e820_get_reserved_pfns(int pages);
+void e820_put_reserved_pfns(unsigned long start_pfn, int pages);
+#endif
 
 #endif /*__E820_HEADER*/
