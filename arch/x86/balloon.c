@@ -61,10 +61,10 @@ void arch_remap_p2m(unsigned long max_pfn)
     p2m_invalidate(l2_list, L2_P2M_IDX(max_pfn - 1) + 1);
     p2m_invalidate(l1_list, L1_P2M_IDX(max_pfn - 1) + 1);
 
-    if ( p2m_pages(nr_max_pages) <= p2m_pages(max_pfn) )
+    if ( p2m_pages(nr_max_pfn) <= p2m_pages(max_pfn) )
         return;
 
-    new_p2m = alloc_virt_kernel(p2m_pages(nr_max_pages));
+    new_p2m = alloc_virt_kernel(p2m_pages(nr_max_pfn));
     for ( pfn = 0; pfn < max_pfn; pfn += P2M_ENTRIES )
     {
         map_frame_rw(new_p2m + PAGE_SIZE * (pfn / P2M_ENTRIES),

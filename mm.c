@@ -396,8 +396,9 @@ void init_mm(void)
 
     printk("MM: Init\n");
 
-    get_max_pages();
     arch_init_mm(&start_pfn, &max_pfn);
+    get_max_pages();
+
     /*
      * now we can initialise the page allocator
      */
@@ -407,10 +408,6 @@ void init_mm(void)
     arch_init_p2m(max_pfn);
     
     arch_init_demand_mapping_area();
-
-#ifdef CONFIG_BALLOON
-    nr_mem_pages = max_pfn;
-#endif
 }
 
 void fini_mm(void)

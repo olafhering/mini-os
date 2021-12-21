@@ -23,14 +23,24 @@
 
 #include <mini-os/os.h>
 #include <mini-os/balloon.h>
+#include <mini-os/e820.h>
 #include <mini-os/errno.h>
 #include <mini-os/lib.h>
 #include <mini-os/paravirt.h>
 #include <xen/xen.h>
 #include <xen/memory.h>
 
-unsigned long nr_max_pages;
-unsigned long nr_mem_pages;
+unsigned long nr_max_pfn;
+
+static unsigned long nr_max_pages;
+static unsigned long nr_mem_pfn;
+static unsigned long nr_mem_pages;
+
+void balloon_set_nr_pages(unsigned long pages, unsigned long pfn)
+{
+    nr_mem_pages = pages;
+    nr_mem_pfn = pfn;
+}
 
 void get_max_pages(void)
 {
@@ -46,16 +56,18 @@ void get_max_pages(void)
 
     nr_max_pages = ret;
     printk("Maximum memory size: %ld pages\n", nr_max_pages);
+
+    nr_max_pfn = e820_get_maxpfn(nr_max_pages);
 }
 
 void mm_alloc_bitmap_remap(void)
 {
     unsigned long i, new_bitmap;
 
-    if ( mm_alloc_bitmap_size >= ((nr_max_pages + 1) >> 3) )
+    if ( mm_alloc_bitmap_size >= ((nr_max_pfn + 1) >> 3) )
         return;
 
-    new_bitmap = alloc_virt_kernel(PFN_UP((nr_max_pages + 1) >> 3));
+    new_bitmap = alloc_virt_kernel(PFN_UP((nr_max_pfn + 1) >> 3));
     for ( i = 0; i < mm_alloc_bitmap_size; i += PAGE_SIZE )
     {
         map_frame_rw(new_bitmap + i,
@@ -70,7 +82,7 @@ static unsigned long balloon_frames[N_BALLOON_FRAMES];
 
 int balloon_up(unsigned long n_pages)
 {
-    unsigned long page, pfn;
+    unsigned long page, pfn, start_pfn;
     int rc;
     struct xen_memory_reservation reservation = {
         .domid        = DOMID_SELF
@@ -81,8 +93,11 @@ int balloon_up(unsigned long n_pages)
     if ( n_pages > N_BALLOON_FRAMES )
         n_pages = N_BALLOON_FRAMES;
 
+    start_pfn = e820_get_maxpfn(nr_mem_pages + 1) - 1;
+    n_pages = e820_get_max_contig_pages(start_pfn, n_pages);
+
     /* Resize alloc_bitmap if necessary. */
-    while ( mm_alloc_bitmap_size * 8 < nr_mem_pages + n_pages )
+    while ( mm_alloc_bitmap_size * 8 < start_pfn + n_pages )
     {
         page = alloc_page();
         if ( !page )
@@ -99,14 +114,14 @@ int balloon_up(unsigned long n_pages)
         mm_alloc_bitmap_size += PAGE_SIZE;
     }
 
-    rc = arch_expand_p2m(nr_mem_pages + n_pages);
+    rc = arch_expand_p2m(start_pfn + n_pages);
     if ( rc )
         return rc;
 
     /* Get new memory from hypervisor. */
     for ( pfn = 0; pfn < n_pages; pfn++ )
     {
-        balloon_frames[pfn] = nr_mem_pages + pfn;
+        balloon_frames[pfn] = start_pfn + pfn;
     }
     set_xen_guest_handle(reservation.extent_start, balloon_frames);
     reservation.nr_extents = n_pages;
@@ -116,7 +131,7 @@ int balloon_up(unsigned long n_pages)
 
     for ( pfn = 0; pfn < rc; pfn++ )
     {
-        arch_pfn_add(nr_mem_pages + pfn, balloon_frames[pfn]);
+        arch_pfn_add(start_pfn + pfn, balloon_frames[pfn]);
         free_page(pfn_to_virt(nr_mem_pages + pfn));
     }
 

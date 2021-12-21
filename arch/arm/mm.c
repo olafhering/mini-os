@@ -3,6 +3,7 @@
 #include <arch_mm.h>
 #include <mini-os/errno.h>
 #include <mini-os/hypervisor.h>
+#include <mini-os/balloon.h>
 #include <libfdt.h>
 #include <lib.h>
 
@@ -70,6 +71,8 @@ void arch_init_mm(unsigned long *start_pfn_p, unsigned long *max_pfn_p)
     }
     device_tree = new_device_tree;
     *max_pfn_p = to_phys(new_device_tree) >> PAGE_SHIFT;
+
+    balloon_set_nr_pages(*max_pfn_p, *max_pfn_p);
 }
 
 void arch_init_demand_mapping_area(void)

@@ -50,5 +50,6 @@ extern struct e820entry e820_map[];
 extern unsigned e820_entries;
 
 unsigned long e820_get_maxpfn(unsigned long pages);
+unsigned long e820_get_max_contig_pages(unsigned long pfn, unsigned long pages);
 
 #endif /*__E820_HEADER*/

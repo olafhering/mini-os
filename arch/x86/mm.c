@@ -72,6 +72,7 @@ void arch_mm_preinit(void *p)
     pt_base = (pgentry_t *)si->pt_base;
     first_free_pfn = PFN_UP(to_phys(pt_base)) + si->nr_pt_frames;
     last_free_pfn = si->nr_pages;
+    balloon_set_nr_pages(last_free_pfn, last_free_pfn);
 }
 #else
 #include <mini-os/desc.h>
@@ -118,6 +119,7 @@ void arch_mm_preinit(void *p)
     }
 
     last_free_pfn = e820_get_maxpfn(ret);
+    balloon_set_nr_pages(ret, last_free_pfn);
 }
 #endif
 

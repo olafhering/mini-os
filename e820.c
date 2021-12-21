@@ -290,7 +290,8 @@ unsigned long e820_get_maxpfn(unsigned long pages)
     int i;
     unsigned long pfns = 0, start = 0;
 
-    e820_get_memmap();
+    if ( !e820_entries )
+        e820_get_memmap();
 
     for ( i = 0; i < e820_entries; i++ )
     {
@@ -304,4 +305,22 @@ unsigned long e820_get_maxpfn(unsigned long pages)
     }
 
     return start + pfns;
+}
+
+unsigned long e820_get_max_contig_pages(unsigned long pfn, unsigned long pages)
+{
+    int i;
+    unsigned long end;
+
+    for ( i = 0; i < e820_entries && e820_map[i].addr <= (pfn << PAGE_SHIFT);
+          i++ )
+    {
+        end = (e820_map[i].addr + e820_map[i].size) >> PAGE_SHIFT;
+        if ( e820_map[i].type != E820_RAM || end <= pfn )
+            continue;
+
+        return ((end - pfn) > pages) ? pages : end - pfn;
+    }
+
+    return 0;
 }

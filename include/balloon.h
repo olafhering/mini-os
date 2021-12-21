@@ -32,11 +32,11 @@
  */
 #define BALLOON_EMERGENCY_PAGES   64
 
-extern unsigned long nr_max_pages;
-extern unsigned long nr_mem_pages;
+extern unsigned long nr_max_pfn;
 
 void get_max_pages(void);
 int balloon_up(unsigned long n_pages);
+void balloon_set_nr_pages(unsigned long pages, unsigned long pfn);
 
 void mm_alloc_bitmap_remap(void);
 void arch_pfn_add(unsigned long pfn, unsigned long mfn);
@@ -50,6 +50,7 @@ static inline int chk_free_pages(unsigned long needed)
 {
     return needed <= nr_free_pages;
 }
+static inline balloon_set_nr_pages(unsigned long pages, unsigned long pfn) { }
 
 #endif /* CONFIG_BALLOON */
 #endif /* _BALLOON_H_ */
