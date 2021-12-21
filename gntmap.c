@@ -55,36 +55,34 @@ struct gntmap_entry {
 };
 
 static inline int
-gntmap_entry_used(struct gntmap_entry *entry)
+gntmap_entry_used(struct gntmap *map, int idx)
 {
-    return entry->host_addr != 0;
+    return map->entries[idx].host_addr != 0;
 }
 
-static struct gntmap_entry*
-gntmap_find_free_entry(struct gntmap *map)
+static int gntmap_find_free_entry(struct gntmap *map)
 {
     int i;
 
     for (i = 0; i < map->nentries; i++) {
-        if (!gntmap_entry_used(&map->entries[i]))
-            return &map->entries[i];
+        if (!gntmap_entry_used(map, i))
+            return i;
     }
 
     DEBUG("(map=%p): all %d entries full",
            map, map->nentries);
-    return NULL;
+    return -1;
 }
 
-static struct gntmap_entry*
-gntmap_find_entry(struct gntmap *map, unsigned long addr)
+static int gntmap_find_entry(struct gntmap *map, unsigned long addr)
 {
     int i;
 
     for (i = 0; i < map->nentries; i++) {
         if (map->entries[i].host_addr == addr)
-            return &map->entries[i];
+            return i;
     }
-    return NULL;
+    return -1;
 }
 
 int
@@ -105,12 +103,13 @@ gntmap_set_max_grants(struct gntmap *map, int count)
 }
 
 static int
-_gntmap_map_grant_ref(struct gntmap_entry *entry, 
+_gntmap_map_grant_ref(struct gntmap *map, int idx,
                       unsigned long host_addr,
                       uint32_t domid,
                       uint32_t ref,
                       int writable)
 {
+    struct gntmap_entry *entry = map->entries + idx;
     struct gnttab_map_grant_ref op;
     int rc;
 
@@ -135,8 +134,9 @@ _gntmap_map_grant_ref(struct gntmap_entry *entry,
 }
 
 static int
-_gntmap_unmap_grant_ref(struct gntmap_entry *entry)
+_gntmap_unmap_grant_ref(struct gntmap *map, int idx)
 {
+    struct gntmap_entry *entry = map->entries + idx;
     struct gnttab_unmap_grant_ref op;
     int rc;
 
@@ -160,19 +160,19 @@ int
 gntmap_munmap(struct gntmap *map, unsigned long start_address, int count)
 {
     int i, rc;
-    struct gntmap_entry *ent;
+    int idx;
 
     DEBUG("(map=%p, start_address=%lx, count=%d)",
            map, start_address, count);
 
     for (i = 0; i < count; i++) {
-        ent = gntmap_find_entry(map, start_address + PAGE_SIZE * i);
-        if (ent == NULL) {
+        idx = gntmap_find_entry(map, start_address + PAGE_SIZE * i);
+        if (idx < 0) {
             printk("gntmap: tried to munmap unknown page\n");
             return -EINVAL;
         }
 
-        rc = _gntmap_unmap_grant_ref(ent);
+        rc = _gntmap_unmap_grant_ref(map, idx);
         if (rc != 0)
             return rc;
     }
@@ -189,7 +189,7 @@ gntmap_map_grant_refs(struct gntmap *map,
                       int writable)
 {
     unsigned long addr;
-    struct gntmap_entry *ent;
+    int idx;
     int i;
 
     DEBUG("(map=%p, count=%" PRIu32 ", "
@@ -206,9 +206,9 @@ gntmap_map_grant_refs(struct gntmap *map,
         return NULL;
 
     for (i = 0; i < count; i++) {
-        ent = gntmap_find_free_entry(map);
-        if (ent == NULL ||
-            _gntmap_map_grant_ref(ent,
+        idx = gntmap_find_free_entry(map);
+        if (idx < 0 ||
+            _gntmap_map_grant_ref(map, idx,
                                   addr + PAGE_SIZE * i,
                                   domids[i * domids_stride],
                                   refs[i],
@@ -233,15 +233,13 @@ gntmap_init(struct gntmap *map)
 void
 gntmap_fini(struct gntmap *map)
 {
-    struct gntmap_entry *ent;
     int i;
 
     DEBUG("(map=%p)", map);
 
     for (i = 0; i < map->nentries; i++) {
-        ent = &map->entries[i];
-        if (gntmap_entry_used(ent))
-            (void) _gntmap_unmap_grant_ref(ent);
+        if (gntmap_entry_used(map, i))
+            (void) _gntmap_unmap_grant_ref(map, i);
     }
 
     xfree(map->entries);
