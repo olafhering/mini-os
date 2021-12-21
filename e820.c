@@ -285,10 +285,10 @@ void arch_print_memmap(void)
 }
 #endif
 
-unsigned long e820_get_maxpfn(void)
+unsigned long e820_get_maxpfn(unsigned long pages)
 {
     int i;
-    unsigned long pfn, max = 0;
+    unsigned long pfns = 0, start = 0;
 
     e820_get_memmap();
 
@@ -296,10 +296,12 @@ unsigned long e820_get_maxpfn(void)
     {
         if ( e820_map[i].type != E820_RAM )
             continue;
-        pfn = (e820_map[i].addr + e820_map[i].size) >> PAGE_SHIFT;
-        if ( pfn > max )
-            max = pfn;
+        pfns = e820_map[i].size >> PAGE_SHIFT;
+        start = e820_map[i].addr >> PAGE_SHIFT;
+        if ( pages <= pfns )
+            return start + pages;
+        pages -= pfns;
     }
 
-    return max;
+    return start + pfns;
 }

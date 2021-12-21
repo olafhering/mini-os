@@ -107,7 +107,6 @@ void arch_mm_preinit(void *p)
 {
     long ret;
     domid_t domid = DOMID_SELF;
-    unsigned long max;
 
     pt_base = page_table_base;
     first_free_pfn = PFN_UP(to_phys(&_end));
@@ -117,11 +116,8 @@ void arch_mm_preinit(void *p)
         xprintk("could not get memory size\n");
         do_exit();
     }
-    last_free_pfn = ret;
 
-    max = e820_get_maxpfn();
-    if ( max < last_free_pfn )
-        last_free_pfn = max;
+    last_free_pfn = e820_get_maxpfn(ret);
 }
 #endif
 

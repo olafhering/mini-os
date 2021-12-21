@@ -49,6 +49,6 @@ struct __packed e820entry {
 extern struct e820entry e820_map[];
 extern unsigned e820_entries;
 
-unsigned long e820_get_maxpfn(void);
+unsigned long e820_get_maxpfn(unsigned long pages);
 
 #endif /*__E820_HEADER*/
