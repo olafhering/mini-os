@@ -32,6 +32,7 @@
 
 #include <mini-os/os.h>
 #include <mini-os/lib.h>
+#include <mini-os/e820.h>
 #include <mini-os/xmalloc.h>
 #include <errno.h>
 #include <xen/grant_table.h>
@@ -97,39 +98,12 @@ gntmap_set_max_grants(struct gntmap *map, int count)
     if (map->entries == NULL)
         return -ENOMEM;
 
+#ifndef CONFIG_PARAVIRT
+    map->start_pfn = e820_get_reserved_pfns(count);
+#endif
+
     memset(map->entries, 0, sizeof(struct gntmap_entry) * count);
     map->nentries = count;
-    return 0;
-}
-
-static int
-_gntmap_map_grant_ref(struct gntmap *map, int idx,
-                      unsigned long host_addr,
-                      uint32_t domid,
-                      uint32_t ref,
-                      int writable)
-{
-    struct gntmap_entry *entry = map->entries + idx;
-    struct gnttab_map_grant_ref op;
-    int rc;
-
-    op.ref = (grant_ref_t) ref;
-    op.dom = (domid_t) domid;
-    op.host_addr = (uint64_t) host_addr;
-    op.flags = GNTMAP_host_map;
-    if (!writable)
-        op.flags |= GNTMAP_readonly;
-
-    rc = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, 1);
-    if (rc != 0 || op.status != GNTST_okay) {
-        printk("GNTTABOP_map_grant_ref failed: "
-               "returned %d, status %" PRId16 "\n",
-               rc, op.status);
-        return rc != 0 ? rc : op.status;
-    }
-
-    entry->host_addr = host_addr;
-    entry->handle = op.handle;
     return 0;
 }
 
@@ -140,7 +114,11 @@ _gntmap_unmap_grant_ref(struct gntmap *map, int idx)
     struct gnttab_unmap_grant_ref op;
     int rc;
 
+#ifdef CONFIG_PARAVIRT
     op.host_addr    = (uint64_t) entry->host_addr;
+#else
+    op.host_addr    = (uint64_t)(map->start_pfn + idx) << PAGE_SHIFT;
+#endif
     op.dev_bus_addr = 0;
     op.handle       = entry->handle;
 
@@ -156,6 +134,54 @@ _gntmap_unmap_grant_ref(struct gntmap *map, int idx)
     return 0;
 }
 
+static int
+_gntmap_map_grant_ref(struct gntmap *map, int idx,
+                      unsigned long host_addr,
+                      uint32_t domid,
+                      uint32_t ref,
+                      int writable)
+{
+    struct gntmap_entry *entry = map->entries + idx;
+    struct gnttab_map_grant_ref op;
+    int rc;
+#ifndef CONFIG_PARAVIRT
+    unsigned long pfn = map->start_pfn + idx;
+#endif
+
+    op.ref = (grant_ref_t) ref;
+    op.dom = (domid_t) domid;
+#ifdef CONFIG_PARAVIRT
+    op.host_addr = (uint64_t) host_addr;
+#else
+    op.host_addr = (uint64_t)pfn << PAGE_SHIFT;
+#endif
+    op.flags = GNTMAP_host_map;
+    if (!writable)
+        op.flags |= GNTMAP_readonly;
+
+    rc = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, 1);
+    if (rc != 0 || op.status != GNTST_okay) {
+        printk("GNTTABOP_map_grant_ref failed: "
+               "returned %d, status %" PRId16 "\n",
+               rc, op.status);
+        return rc != 0 ? rc : op.status;
+    }
+
+#ifndef CONFIG_PARAVIRT
+    rc = do_map_frames(host_addr, &pfn, 1, 0, 0, DOMID_SELF, NULL,
+                       writable ? L1_PROT : L1_PROT_RO);
+    if ( rc )
+    {
+        _gntmap_unmap_grant_ref(map, idx);
+        return rc;
+    }
+#endif
+
+    entry->host_addr = host_addr;
+    entry->handle = op.handle;
+    return 0;
+}
+
 int
 gntmap_munmap(struct gntmap *map, unsigned long start_address, int count)
 {
@@ -164,6 +190,10 @@ gntmap_munmap(struct gntmap *map, unsigned long start_address, int count)
 
     DEBUG("(map=%p, start_address=%lx, count=%d)",
            map, start_address, count);
+
+#ifndef CONFIG_PARAVIRT
+    unmap_frames(start_address, count);
+#endif
 
     for (i = 0; i < count; i++) {
         idx = gntmap_find_entry(map, start_address + PAGE_SIZE * i);
@@ -241,6 +271,11 @@ gntmap_fini(struct gntmap *map)
         if (gntmap_entry_used(map, i))
             (void) _gntmap_unmap_grant_ref(map, i);
     }
+
+#ifndef CONFIG_PARAVIRT
+    e820_put_reserved_pfns(map->start_pfn, map->nentries);
+    map->start_pfn = 0;
+#endif
 
     xfree(map->entries);
     map->entries = NULL;

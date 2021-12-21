@@ -10,6 +10,7 @@
 struct gntmap {
     int nentries;
     struct gntmap_entry *entries;
+    unsigned long start_pfn;
 };
 
 int
