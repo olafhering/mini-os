@@ -1288,14 +1288,14 @@ int tpm_tis_open(struct tpm_chip* tpm)
 
    tpm->fd = alloc_fd(FTYPE_TPM_TIS);
    printk("tpm_tis_open() -> %d\n", tpm->fd);
-   files[tpm->fd].tpm_tis.dev = tpm;
+   files[tpm->fd].dev = tpm;
    return tpm->fd;
 }
 
 int tpm_tis_posix_write(int fd, const uint8_t* buf, size_t count)
 {
    struct tpm_chip* tpm;
-   tpm = files[fd].tpm_tis.dev;
+   tpm = files[fd].dev;
 
    if(tpm->locality < 0) {
       printk("tpm_tis_posix_write() failed! locality not set!\n");
@@ -1323,7 +1323,7 @@ int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count)
 {
    int rc;
    struct tpm_chip* tpm;
-   tpm = files[fd].tpm_tis.dev;
+   tpm = files[fd].dev;
 
    if(count == 0) {
       return 0;
@@ -1350,7 +1350,7 @@ int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count)
 int tpm_tis_posix_fstat(int fd, struct stat* buf)
 {
    struct tpm_chip* tpm;
-   tpm = files[fd].tpm_tis.dev;
+   tpm = files[fd].dev;
 
    buf->st_mode = O_RDWR;
    buf->st_uid = 0;

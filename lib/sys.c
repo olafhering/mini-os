@@ -468,7 +468,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_TPM_TIS
 	case FTYPE_TPM_TIS:
-            shutdown_tpm_tis(files[fd].tpm_tis.dev);
+            shutdown_tpm_tis(files[fd].dev);
 	    files[fd].type = FTYPE_NONE;
 	    return 0;
 #endif

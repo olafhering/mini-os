@@ -193,11 +193,6 @@ struct file {
 	    struct evtchn_port_list ports;
 	} evtchn;
 	struct gntmap gntmap;
-#ifdef CONFIG_TPM_TIS
-	struct {
-	   struct tpm_chip *dev;
-	} tpm_tis;
-#endif
 #ifdef CONFIG_XENBUS
         struct {
             /* To each xenbus FD is associated a queue of watch events for this
