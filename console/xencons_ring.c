@@ -102,7 +102,7 @@ void console_handle_input(evtchn_port_t port, struct pt_regs *regs, void *data)
         int fd = dev ? dev->fd : -1;
 
         if (fd != -1)
-            files[fd].read = 1;
+            files[fd].read = true;
 
         wake_up(&console_queue);
 #else

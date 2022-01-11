@@ -62,7 +62,7 @@ void blkfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
     int fd = dev->fd;
 
     if (fd != -1)
-        files[fd].read = 1;
+        files[fd].read = true;
 #endif
     wake_up(&blkfront_queue);
 }
@@ -484,7 +484,7 @@ int blkfront_aio_poll(struct blkfront_dev *dev)
 moretodo:
 #ifdef HAVE_LIBC
     if (dev->fd != -1) {
-        files[dev->fd].read = 0;
+        files[dev->fd].read = false;
         mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
     }
 #endif

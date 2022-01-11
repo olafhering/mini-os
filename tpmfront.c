@@ -66,7 +66,7 @@ void tpmfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data) {
    dev->waiting = 0;
 #ifdef HAVE_LIBC
    if(dev->fd >= 0) {
-      files[dev->fd].read = 1;
+      files[dev->fd].read = true;
    }
 #endif
    wake_up(&dev->waitq);
@@ -438,7 +438,7 @@ int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
    dev->resplen = 0;
 #ifdef HAVE_LIBC
    if(dev->fd >= 0) {
-      files[dev->fd].read = 0;
+      files[dev->fd].read = false;
       files[dev->fd].tpmfront.respgot = 0;
       files[dev->fd].tpmfront.offset = 0;
    }
@@ -611,7 +611,7 @@ int tpmfront_posix_fstat(int fd, struct stat* buf)
 
    /* If we have a response waiting, then read it now from the backend
     * so we can get its length*/
-   if(dev->waiting || (files[dev->fd].read == 1 && !files[dev->fd].tpmfront.respgot)) {
+   if(dev->waiting || (files[dev->fd].read && !files[dev->fd].tpmfront.respgot)) {
       if ((rc = tpmfront_recv(dev, &dummybuf, &dummysz)) != 0) {
 	 errno = EIO;
 	 return -1;

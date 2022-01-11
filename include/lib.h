@@ -49,6 +49,7 @@
 #define _LIB_H_
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <xen/xen.h>
 #include <xen/event_channel.h>
@@ -183,6 +184,7 @@ struct evtchn_port_info {
 
 struct file {
     enum fd_type type;
+    bool read;	/* maybe available for read */
     union {
 	struct {
             /* lwIP fd */
@@ -235,7 +237,6 @@ struct file {
         } xenbus;
 #endif
     };
-    int read;	/* maybe available for read */
 };
 
 extern struct file files[];

@@ -255,7 +255,7 @@ void netfront_select_handler(evtchn_port_t port, struct pt_regs *regs, void *dat
     local_irq_restore(flags);
 
     if (fd != -1)
-        files[fd].read = 1;
+        files[fd].read = true;
     wake_up(&netfront_queue);
 }
 #endif
@@ -783,7 +783,7 @@ ssize_t netfront_receive(struct netfront_dev *dev, unsigned char *data, size_t l
     network_rx(dev);
     if (!dev->rlen && fd != -1)
         /* No data for us, make select stop returning */
-        files[fd].read = 0;
+        files[fd].read = false;
     /* Before re-enabling the interrupts, in case a packet just arrived in the
      * meanwhile. */
     local_irq_restore(flags);

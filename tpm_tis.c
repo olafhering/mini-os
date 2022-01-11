@@ -845,7 +845,7 @@ int tpm_tis_send(struct tpm_chip* tpm, uint8_t* buf, size_t len) {
    }
 #ifdef HAVE_LIBC
    if(tpm->fd >= 0) {
-      files[tpm->fd].read = 0;
+      files[tpm->fd].read = false;
       files[tpm->fd].tpm_tis.respgot = 0;
       files[tpm->fd].tpm_tis.offset = 0;
    }

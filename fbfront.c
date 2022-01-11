@@ -45,7 +45,7 @@ void kbdfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
     int fd = dev->fd;
 
     if (fd != -1)
-        files[fd].read = 1;
+        files[fd].read = true;
 #endif
     wake_up(&kbdfront_queue);
 }
@@ -207,7 +207,7 @@ int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n
 
 #ifdef HAVE_LIBC
     if (dev->fd != -1) {
-        files[dev->fd].read = 0;
+        files[dev->fd].read = false;
         mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
     }
 #endif
@@ -229,7 +229,7 @@ int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n
 #ifdef HAVE_LIBC
     if (cons != prod && dev->fd != -1)
         /* still some events to read */
-        files[dev->fd].read = 1;
+        files[dev->fd].read = true;
 #endif
 
     return i;
@@ -349,7 +349,7 @@ void fbfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
     int fd = dev->fd;
 
     if (fd != -1)
-        files[fd].read = 1;
+        files[fd].read = true;
 #endif
     wake_up(&fbfront_queue);
 }
@@ -376,7 +376,7 @@ int fbfront_receive(struct fbfront_dev *dev, union xenfb_in_event *buf, int n)
 
 #ifdef HAVE_LIBC
     if (dev->fd != -1) {
-        files[dev->fd].read = 0;
+        files[dev->fd].read = false;
         mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
     }
 #endif
@@ -398,7 +398,7 @@ int fbfront_receive(struct fbfront_dev *dev, union xenfb_in_event *buf, int n)
 #ifdef HAVE_LIBC
     if (cons != prod && dev->fd != -1)
         /* still some events to read */
-        files[dev->fd].read = 1;
+        files[dev->fd].read = true;
 #endif
 
     return i;
