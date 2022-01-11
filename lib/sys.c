@@ -179,7 +179,7 @@ int posix_openpt(int flags)
 
     dev = init_consfront(NULL);
     dev->fd = alloc_fd(FTYPE_CONSOLE);
-    files[dev->fd].cons.dev = dev;
+    files[dev->fd].dev = dev;
 
     printk("fd(%d) = posix_openpt\n", dev->fd);
     return(dev->fd);
@@ -194,7 +194,7 @@ int open_savefile(const char *path, int save)
 
     dev = init_consfront(nodename);
     dev->fd = alloc_fd(FTYPE_SAVEFILE);
-    files[dev->fd].cons.dev = dev;
+    files[dev->fd].dev = dev;
 
     printk("fd(%d) = open_savefile\n", dev->fd);
     return(dev->fd);
@@ -248,7 +248,7 @@ int read(int fd, void *buf, size_t nbytes)
             DEFINE_WAIT(w);
             while(1) {
                 add_waiter(w, console_queue);
-                ret = xencons_ring_recv(files[fd].cons.dev, buf, nbytes);
+                ret = xencons_ring_recv(files[fd].dev, buf, nbytes);
                 if (ret)
                     break;
                 schedule();
@@ -324,14 +324,14 @@ int write(int fd, const void *buf, size_t nbytes)
         case FTYPE_SAVEFILE: {
                 int ret = 0, tot = nbytes;
                 while (nbytes > 0) {
-                    ret = xencons_ring_send(files[fd].cons.dev, (char *)buf, nbytes);
+                    ret = xencons_ring_send(files[fd].dev, (char *)buf, nbytes);
                     nbytes -= ret;
                     buf = (char *)buf + ret;
                 }
                 return tot - nbytes;
             }
 	case FTYPE_CONSOLE:
-	    console_print(files[fd].cons.dev, (char *)buf, nbytes);
+	    console_print(files[fd].dev, (char *)buf, nbytes);
 	    return nbytes;
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
@@ -487,7 +487,7 @@ int close(int fd)
 #ifdef CONFIG_CONSFRONT
         case FTYPE_SAVEFILE:
         case FTYPE_CONSOLE:
-            fini_consfront(files[fd].cons.dev);
+            fini_consfront(files[fd].dev);
             files[fd].type = FTYPE_NONE;
             return 0;
 #endif
@@ -764,7 +764,7 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	    /* Fallthrough.  */
 	case FTYPE_CONSOLE:
 	    if (FD_ISSET(i, readfds)) {
-                if (xencons_ring_avail(files[i].cons.dev))
+                if (xencons_ring_avail(files[i].dev))
 		    n++;
 		else
 		    FD_CLR(i, readfds);
@@ -1447,6 +1447,8 @@ const struct termios default_termios = {0,             /* iflag */
 
 int tcsetattr(int fildes, int action, const struct termios *tios)
 {
+    struct consfront_dev *dev;
+
     if (fildes < 0 || fildes >= NOFILE) {
         errno = EBADF;
         return -1;
@@ -1472,21 +1474,21 @@ int tcsetattr(int fildes, int action, const struct termios *tios)
             return -1;
     }
 
-    if (files[fildes].cons.dev == NULL) {
+    dev = files[fildes].dev;
+    if (dev == NULL) {
         errno = ENOSYS;
         return -1;
     }
 
-    if (tios->c_oflag & OPOST)
-        files[fildes].cons.dev->is_raw = false;
-    else
-        files[fildes].cons.dev->is_raw = true;
+    dev->is_raw = !(tios->c_oflag & OPOST);
 
     return 0;
 }
 
 int tcgetattr(int fildes, struct termios *tios)
 {
+    struct consfront_dev *dev;
+
     if (fildes < 0 || fildes >= NOFILE) {
         errno = EBADF;
         return -1;
@@ -1497,7 +1499,8 @@ int tcgetattr(int fildes, struct termios *tios)
         return -1;
     }
 
-    if (files[fildes].cons.dev == NULL) {
+    dev = files[fildes].dev;
+    if (dev == NULL) {
         errno = ENOSYS;
         return 0;
     }
@@ -1509,7 +1512,7 @@ int tcgetattr(int fildes, struct termios *tios)
 
     memcpy(tios, &default_termios, sizeof(struct termios));
 
-    if (files[fildes].cons.dev->is_raw)
+    if (dev->is_raw)
         tios->c_oflag &= ~OPOST;
 
     return 0;

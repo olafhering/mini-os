@@ -202,9 +202,6 @@ struct file {
 	struct {
 	    struct fbfront_dev *dev;
 	} fb;
-	struct {
-	    struct consfront_dev *dev;
-	} cons;
 #ifdef CONFIG_TPMFRONT
 	struct {
 	   struct tpmfront_dev *dev;
