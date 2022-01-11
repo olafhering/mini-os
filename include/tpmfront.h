@@ -25,6 +25,7 @@
 #ifndef TPMFRONT_H
 #define TPMFRONT_H
 
+#include <stdbool.h>
 #include <mini-os/types.h>
 #include <mini-os/os.h>
 #include <mini-os/events.h>
@@ -53,6 +54,7 @@ struct tpmfront_dev {
 
 #ifdef HAVE_LIBC
    int fd;
+   bool respgot;
 #endif
 
 };

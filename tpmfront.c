@@ -439,8 +439,8 @@ int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
 #ifdef HAVE_LIBC
    if(dev->fd >= 0) {
       files[dev->fd].read = false;
-      files[dev->fd].tpmfront.respgot = 0;
       files[dev->fd].offset = 0;
+      dev->respgot = false;
    }
 #endif
    wmb();
@@ -499,7 +499,7 @@ int i;
 #endif
 #ifdef HAVE_LIBC
    if(dev->fd >= 0) {
-      files[dev->fd].tpmfront.respgot = 1;
+      dev->respgot = true;
    }
 #endif
 quit:
@@ -539,7 +539,7 @@ int tpmfront_open(struct tpmfront_dev* dev)
    dev->fd = alloc_fd(FTYPE_TPMFRONT);
    printk("tpmfront_open(%s) -> %d\n", dev->nodename, dev->fd);
    files[dev->fd].tpmfront.dev = dev;
-   files[dev->fd].tpmfront.respgot = 0;
+   dev->respgot = false;
    return dev->fd;
 }
 
@@ -580,7 +580,7 @@ int tpmfront_posix_read(int fd, uint8_t* buf, size_t count)
    }
 
    /* get the response if we haven't already */
-   if(files[dev->fd].tpmfront.respgot == 0) {
+   if (!dev->respgot) {
       if ((rc = tpmfront_recv(dev, &dummybuf, &dummysz)) != 0) {
 	 errno = EIO;
 	 return -1;
@@ -610,7 +610,7 @@ int tpmfront_posix_fstat(int fd, struct stat* buf)
 
    /* If we have a response waiting, then read it now from the backend
     * so we can get its length*/
-   if(dev->waiting || (files[dev->fd].read && !files[dev->fd].tpmfront.respgot)) {
+   if(dev->waiting || (files[dev->fd].read && !dev->respgot)) {
       if ((rc = tpmfront_recv(dev, &dummybuf, &dummysz)) != 0) {
 	 errno = EIO;
 	 return -1;

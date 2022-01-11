@@ -196,13 +196,11 @@ struct file {
 #ifdef CONFIG_TPMFRONT
 	struct {
 	   struct tpmfront_dev *dev;
-	   int respgot;
 	} tpmfront;
 #endif
 #ifdef CONFIG_TPM_TIS
 	struct {
 	   struct tpm_chip *dev;
-	   int respgot;
 	} tpm_tis;
 #endif
 #ifdef CONFIG_XENBUS
