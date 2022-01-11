@@ -263,7 +263,7 @@ int read(int fd, void *buf, size_t nbytes)
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP: {
 	    ssize_t ret;
-	    ret = netfront_receive(files[fd].tap.dev, buf, nbytes);
+	    ret = netfront_receive(files[fd].dev, buf, nbytes);
 	    if (ret <= 0) {
 		errno = EAGAIN;
 		return -1;
@@ -339,7 +339,7 @@ int write(int fd, const void *buf, size_t nbytes)
 #endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
-	    netfront_xmit(files[fd].tap.dev, (void*) buf, nbytes);
+	    netfront_xmit(files[fd].dev, (void*) buf, nbytes);
 	    return nbytes;
 #endif
 #ifdef CONFIG_BLKFRONT
@@ -450,7 +450,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
-	    shutdown_netfront(files[fd].tap.dev);
+	    shutdown_netfront(files[fd].dev);
 	    files[fd].type = FTYPE_NONE;
 	    return 0;
 #endif

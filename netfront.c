@@ -576,7 +576,7 @@ int netfront_tap_open(char *nodename) {
     }
     dev->fd = alloc_fd(FTYPE_TAP);
     printk("tap_open(%s) -> %d\n", nodename, dev->fd);
-    files[dev->fd].tap.dev = dev;
+    files[dev->fd].dev = dev;
     return dev->fd;
 }
 #endif
