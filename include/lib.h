@@ -185,6 +185,7 @@ struct evtchn_port_info {
 struct file {
     enum fd_type type;
     bool read;	/* maybe available for read */
+    off_t offset;
     union {
 	struct {
             /* lwIP fd */
@@ -193,7 +194,6 @@ struct file {
 	struct {
             /* FS import fd */
 	    int fd;
-	    off_t offset;
 	} file;
 	struct {
 	    struct evtchn_port_list ports;
@@ -204,7 +204,6 @@ struct file {
 	} tap;
 	struct {
 	    struct blkfront_dev *dev;
-            off_t offset;
 	} blk;
 	struct {
 	    struct kbdfront_dev *dev;
@@ -219,14 +218,12 @@ struct file {
 	struct {
 	   struct tpmfront_dev *dev;
 	   int respgot;
-	   off_t offset;
 	} tpmfront;
 #endif
 #ifdef CONFIG_TPM_TIS
 	struct {
 	   struct tpm_chip *dev;
 	   int respgot;
-	   off_t offset;
 	} tpm_tis;
 #endif
 #ifdef CONFIG_XENBUS

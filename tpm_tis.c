@@ -847,7 +847,7 @@ int tpm_tis_send(struct tpm_chip* tpm, uint8_t* buf, size_t len) {
    if(tpm->fd >= 0) {
       files[tpm->fd].read = false;
       files[tpm->fd].tpm_tis.respgot = 0;
-      files[tpm->fd].tpm_tis.offset = 0;
+      files[tpm->fd].offset = 0;
    }
 #endif
    return len;
@@ -1290,7 +1290,6 @@ int tpm_tis_open(struct tpm_chip* tpm)
    tpm->fd = alloc_fd(FTYPE_TPM_TIS);
    printk("tpm_tis_open() -> %d\n", tpm->fd);
    files[tpm->fd].tpm_tis.dev = tpm;
-   files[tpm->fd].tpm_tis.offset = 0;
    files[tpm->fd].tpm_tis.respgot = 0;
    return tpm->fd;
 }
@@ -1340,13 +1339,13 @@ int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count)
 
 
    /* Handle EOF case */
-   if(files[fd].tpm_tis.offset >= tpm->data_len) {
+   if(files[fd].offset >= tpm->data_len) {
       rc = 0;
    } else {
-      rc = min(tpm->data_len - files[fd].tpm_tis.offset, count);
-      memcpy(buf, tpm->data_buffer + files[fd].tpm_tis.offset, rc);
+      rc = min(tpm->data_len - files[fd].offset, count);
+      memcpy(buf, tpm->data_buffer + files[fd].offset, rc);
    }
-   files[fd].tpm_tis.offset += rc;
+   files[fd].offset += rc;
    /* Reset the data pending flag */
    return rc;
 }

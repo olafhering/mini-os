@@ -440,7 +440,7 @@ int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
    if(dev->fd >= 0) {
       files[dev->fd].read = false;
       files[dev->fd].tpmfront.respgot = 0;
-      files[dev->fd].tpmfront.offset = 0;
+      files[dev->fd].offset = 0;
    }
 #endif
    wmb();
@@ -539,7 +539,6 @@ int tpmfront_open(struct tpmfront_dev* dev)
    dev->fd = alloc_fd(FTYPE_TPMFRONT);
    printk("tpmfront_open(%s) -> %d\n", dev->nodename, dev->fd);
    files[dev->fd].tpmfront.dev = dev;
-   files[dev->fd].tpmfront.offset = 0;
    files[dev->fd].tpmfront.respgot = 0;
    return dev->fd;
 }
@@ -589,14 +588,14 @@ int tpmfront_posix_read(int fd, uint8_t* buf, size_t count)
    }
 
    /* handle EOF case */
-   if(files[dev->fd].tpmfront.offset >= dev->resplen) {
+   if(files[dev->fd].offset >= dev->resplen) {
       return 0;
    }
 
    /* Compute the number of bytes and do the copy operation */
-   if((rc = min(count, dev->resplen - files[dev->fd].tpmfront.offset)) != 0) {
-      memcpy(buf, dev->respbuf + files[dev->fd].tpmfront.offset, rc);
-      files[dev->fd].tpmfront.offset += rc;
+   if((rc = min(count, dev->resplen - files[dev->fd].offset)) != 0) {
+      memcpy(buf, dev->respbuf + files[dev->fd].offset, rc);
+      files[dev->fd].offset += rc;
    }
 
    return rc;

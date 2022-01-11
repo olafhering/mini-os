@@ -107,6 +107,7 @@ int alloc_fd(enum fd_type type)
     for (i=0; i<NOFILE; i++) {
 	if (files[i].type == FTYPE_NONE) {
 	    files[i].type = type;
+            files[i].offset = 0;
 	    pthread_mutex_unlock(&fd_lock);
 	    return i;
 	}
@@ -363,25 +364,20 @@ int write(int fd, const void *buf, size_t nbytes)
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-    off_t* target = NULL;
     switch(files[fd].type) {
 #ifdef CONFIG_BLKFRONT
        case FTYPE_BLK:
-          target = &files[fd].blk.offset;
           break;
 #endif
 #ifdef CONFIG_TPMFRONT
        case FTYPE_TPMFRONT:
-          target = &files[fd].tpmfront.offset;
           break;
 #endif
 #ifdef CONFIG_TPM_TIS
        case FTYPE_TPM_TIS:
-          target = &files[fd].tpm_tis.offset;
           break;
 #endif
        case FTYPE_FILE:
-          target = &files[fd].file.offset;
           break;
        default:
           /* Not implemented for this filetype */
@@ -391,10 +387,10 @@ off_t lseek(int fd, off_t offset, int whence)
 
     switch (whence) {
        case SEEK_SET:
-          *target = offset;
+          files[fd].offset = offset;
           break;
        case SEEK_CUR:
-          *target += offset;
+          files[fd].offset += offset;
           break;
        case SEEK_END:
           {
@@ -403,14 +399,14 @@ off_t lseek(int fd, off_t offset, int whence)
              ret = fstat(fd, &st);
              if (ret)
                 return -1;
-             *target = st.st_size + offset;
+             files[fd].offset = st.st_size + offset;
              break;
           }
        default:
           errno = EINVAL;
           return -1;
     }
-    return *target;
+    return files[fd].offset;
 }
 
 int fsync(int fd) {

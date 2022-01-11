@@ -563,14 +563,13 @@ int blkfront_open(struct blkfront_dev *dev)
     dev->fd = alloc_fd(FTYPE_BLK);
     printk("blk_open(%s) -> %d\n", dev->nodename, dev->fd);
     files[dev->fd].blk.dev = dev;
-    files[dev->fd].blk.offset = 0;
     return dev->fd;
 }
 
 int blkfront_posix_rwop(int fd, uint8_t* buf, size_t count, int write)
 {
    struct blkfront_dev* dev = files[fd].blk.dev;
-   off_t offset = files[fd].blk.offset;
+   off_t offset = files[fd].offset;
    struct blkfront_aiocb aiocb;
    unsigned long long disksize = dev->info.sectors * dev->info.sector_size;
    unsigned int blocksize = dev->info.sector_size;
@@ -712,7 +711,7 @@ int blkfront_posix_rwop(int fd, uint8_t* buf, size_t count, int write)
    }
 
    free(copybuf);
-   files[fd].blk.offset += rc;
+   files[fd].offset += rc;
    return rc;
 
 }
