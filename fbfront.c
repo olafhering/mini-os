@@ -302,7 +302,7 @@ int kbdfront_open(struct kbdfront_dev *dev)
 {
     dev->fd = alloc_fd(FTYPE_KBD);
     printk("kbd_open(%s) -> %d\n", dev->nodename, dev->fd);
-    files[dev->fd].kbd.dev = dev;
+    files[dev->fd].dev = dev;
     return dev->fd;
 }
 #endif

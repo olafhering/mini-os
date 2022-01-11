@@ -196,9 +196,6 @@ struct file {
 	struct {
 	    struct netfront_dev *dev;
 	} tap;
-	struct {
-	    struct kbdfront_dev *dev;
-	} kbd;
 #ifdef CONFIG_TPMFRONT
 	struct {
 	   struct tpmfront_dev *dev;

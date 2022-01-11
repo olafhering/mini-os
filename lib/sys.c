@@ -275,7 +275,7 @@ int read(int fd, void *buf, size_t nbytes)
         case FTYPE_KBD: {
             int ret, n;
             n = nbytes / sizeof(union xenkbd_in_event);
-            ret = kbdfront_receive(files[fd].kbd.dev, buf, n);
+            ret = kbdfront_receive(files[fd].dev, buf, n);
 	    if (ret <= 0) {
 		errno = EAGAIN;
 		return -1;
@@ -474,7 +474,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_KBDFRONT
 	case FTYPE_KBD:
-            shutdown_kbdfront(files[fd].kbd.dev);
+            shutdown_kbdfront(files[fd].dev);
             files[fd].type = FTYPE_NONE;
             return 0;
 #endif
