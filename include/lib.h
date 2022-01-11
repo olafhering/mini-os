@@ -193,11 +193,6 @@ struct file {
 	    struct evtchn_port_list ports;
 	} evtchn;
 	struct gntmap gntmap;
-#ifdef CONFIG_TPMFRONT
-	struct {
-	   struct tpmfront_dev *dev;
-	} tpmfront;
-#endif
 #ifdef CONFIG_TPM_TIS
 	struct {
 	   struct tpm_chip *dev;

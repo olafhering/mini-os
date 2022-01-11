@@ -462,7 +462,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_TPMFRONT
 	case FTYPE_TPMFRONT:
-            shutdown_tpmfront(files[fd].tpmfront.dev);
+            shutdown_tpmfront(files[fd].dev);
 	    files[fd].type = FTYPE_NONE;
 	    return 0;
 #endif

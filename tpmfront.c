@@ -538,7 +538,7 @@ int tpmfront_open(struct tpmfront_dev* dev)
 
    dev->fd = alloc_fd(FTYPE_TPMFRONT);
    printk("tpmfront_open(%s) -> %d\n", dev->nodename, dev->fd);
-   files[dev->fd].tpmfront.dev = dev;
+   files[dev->fd].dev = dev;
    dev->respgot = false;
    return dev->fd;
 }
@@ -547,7 +547,7 @@ int tpmfront_posix_write(int fd, const uint8_t* buf, size_t count)
 {
    int rc;
    struct tpmfront_dev* dev;
-   dev = files[fd].tpmfront.dev;
+   dev = files[fd].dev;
 
    if(count == 0) {
       return 0;
@@ -573,7 +573,7 @@ int tpmfront_posix_read(int fd, uint8_t* buf, size_t count)
    size_t dummysz;
    struct tpmfront_dev* dev;
 
-   dev = files[fd].tpmfront.dev;
+   dev = files[fd].dev;
 
    if(count == 0) {
       return 0;
@@ -606,7 +606,7 @@ int tpmfront_posix_fstat(int fd, struct stat* buf)
    uint8_t* dummybuf;
    size_t dummysz;
    int rc;
-   struct tpmfront_dev* dev = files[fd].tpmfront.dev;
+   struct tpmfront_dev* dev = files[fd].dev;
 
    /* If we have a response waiting, then read it now from the backend
     * so we can get its length*/
