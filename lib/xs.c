@@ -21,8 +21,8 @@ static inline int _xs_fileno(struct xs_handle *h) {
 struct xs_handle *xs_daemon_open()
 {
     int fd = alloc_fd(FTYPE_XENBUS);
-    files[fd].xenbus.events = NULL;
-    printk("xs_daemon_open -> %d, %p\n", fd, &files[fd].xenbus.events);
+    files[fd].dev = NULL;
+    printk("xs_daemon_open -> %d, %p\n", fd, &files[fd].dev);
     return (void*)(intptr_t) fd;
 }
 
@@ -30,7 +30,7 @@ void xs_daemon_close(struct xs_handle *h)
 {
     int fd = _xs_fileno(h);
     struct xenbus_event *event, *next;
-    for (event = files[fd].xenbus.events; event; event = next)
+    for (event = files[fd].dev; event; event = next)
     {
         next = event->next;
         free(event);
@@ -172,15 +172,16 @@ bool xs_watch(struct xs_handle *h, const char *path, const char *token)
 {
     int fd = _xs_fileno(h);
     printk("xs_watch(%s, %s)\n", path, token);
-    return xs_bool(xenbus_watch_path_token(XBT_NULL, path, token, &files[fd].xenbus.events));
+    return xs_bool(xenbus_watch_path_token(XBT_NULL, path, token,
+                   (xenbus_event_queue *)&files[fd].dev));
 }
 
 char **xs_read_watch(struct xs_handle *h, unsigned int *num)
 {
     int fd = _xs_fileno(h);
     struct xenbus_event *event;
-    event = files[fd].xenbus.events;
-    files[fd].xenbus.events = event->next;
+    event = files[fd].dev;
+    files[fd].dev = event->next;
     printk("xs_read_watch() -> %s %s\n", event->path, event->token);
     *num = 2;
     return (char **) &event->path;

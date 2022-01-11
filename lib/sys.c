@@ -776,7 +776,7 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 #ifdef CONFIG_XENBUS
 	case FTYPE_XENBUS:
 	    if (FD_ISSET(i, readfds)) {
-                if (files[i].xenbus.events)
+                if (files[i].dev)
 		    n++;
 		else
 		    FD_CLR(i, readfds);
