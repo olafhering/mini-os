@@ -703,7 +703,7 @@ int fbfront_open(struct fbfront_dev *dev)
 {
     dev->fd = alloc_fd(FTYPE_FB);
     printk("fb_open(%s) -> %d\n", dev->nodename, dev->fd);
-    files[dev->fd].fb.dev = dev;
+    files[dev->fd].dev = dev;
     return dev->fd;
 }
 #endif

@@ -287,7 +287,7 @@ int read(int fd, void *buf, size_t nbytes)
         case FTYPE_FB: {
             int ret, n;
             n = nbytes / sizeof(union xenfb_in_event);
-            ret = fbfront_receive(files[fd].fb.dev, buf, n);
+            ret = fbfront_receive(files[fd].dev, buf, n);
 	    if (ret <= 0) {
 		errno = EAGAIN;
 		return -1;
@@ -480,7 +480,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_FBFRONT
 	case FTYPE_FB:
-            shutdown_fbfront(files[fd].fb.dev);
+            shutdown_fbfront(files[fd].dev);
             files[fd].type = FTYPE_NONE;
             return 0;
 #endif

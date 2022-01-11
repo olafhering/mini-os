@@ -199,9 +199,6 @@ struct file {
 	struct {
 	    struct kbdfront_dev *dev;
 	} kbd;
-	struct {
-	    struct fbfront_dev *dev;
-	} fb;
 #ifdef CONFIG_TPMFRONT
 	struct {
 	   struct tpmfront_dev *dev;
