@@ -187,14 +187,7 @@ struct file {
     bool read;	/* maybe available for read */
     off_t offset;
     union {
-	struct {
-            /* lwIP fd */
-	    int fd;
-	} socket;
-	struct {
-            /* FS import fd */
-	    int fd;
-	} file;
+        int fd; /* Any fd from an upper layer. */
 	struct {
 	    struct evtchn_port_list ports;
 	} evtchn;

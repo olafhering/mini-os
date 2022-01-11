@@ -258,7 +258,7 @@ int read(int fd, void *buf, size_t nbytes)
         }
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
-	    return lwip_read(files[fd].socket.fd, buf, nbytes);
+	    return lwip_read(files[fd].fd, buf, nbytes);
 #endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP: {
@@ -335,7 +335,7 @@ int write(int fd, const void *buf, size_t nbytes)
 	    return nbytes;
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
-	    return lwip_write(files[fd].socket.fd, (void*) buf, nbytes);
+	    return lwip_write(files[fd].fd, (void*) buf, nbytes);
 #endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
@@ -428,7 +428,7 @@ int close(int fd)
 #endif
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET: {
-	    int res = lwip_close(files[fd].socket.fd);
+	    int res = lwip_close(files[fd].fd);
 	    files[fd].type = FTYPE_NONE;
 	    return res;
 	}
@@ -594,7 +594,7 @@ int fcntl(int fd, int cmd, ...)
 	    if (files[fd].type == FTYPE_SOCKET && !(arg & ~O_NONBLOCK)) {
 		/* Only flag supported: non-blocking mode */
 		uint32_t nblock = !!(arg & O_NONBLOCK);
-		return lwip_ioctl(files[fd].socket.fd, FIONBIO, &nblock);
+		return lwip_ioctl(files[fd].fd, FIONBIO, &nblock);
 	    }
 	    /* Fallthrough */
 #endif
@@ -732,15 +732,15 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
     for (i = 0; i < nfds; i++) {
 	if (files[i].type == FTYPE_SOCKET) {
 	    if (FD_ISSET(i, readfds)) {
-		FD_SET(files[i].socket.fd, &sock_readfds);
+		FD_SET(files[i].fd, &sock_readfds);
 		sock_nfds = i+1;
 	    }
 	    if (FD_ISSET(i, writefds)) {
-		FD_SET(files[i].socket.fd, &sock_writefds);
+		FD_SET(files[i].fd, &sock_writefds);
 		sock_nfds = i+1;
 	    }
 	    if (FD_ISSET(i, exceptfds)) {
-		FD_SET(files[i].socket.fd, &sock_exceptfds);
+		FD_SET(files[i].fd, &sock_exceptfds);
 		sock_nfds = i+1;
 	    }
 	}
@@ -803,19 +803,19 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	case FTYPE_SOCKET:
 	    if (FD_ISSET(i, readfds)) {
 	        /* Optimize no-network-packet case.  */
-		if (sock_n && FD_ISSET(files[i].socket.fd, &sock_readfds))
+		if (sock_n && FD_ISSET(files[i].fd, &sock_readfds))
 		    n++;
 		else
 		    FD_CLR(i, readfds);
 	    }
             if (FD_ISSET(i, writefds)) {
-		if (sock_n && FD_ISSET(files[i].socket.fd, &sock_writefds))
+		if (sock_n && FD_ISSET(files[i].fd, &sock_writefds))
 		    n++;
 		else
 		    FD_CLR(i, writefds);
             }
             if (FD_ISSET(i, exceptfds)) {
-		if (sock_n && FD_ISSET(files[i].socket.fd, &sock_exceptfds))
+		if (sock_n && FD_ISSET(files[i].fd, &sock_exceptfds))
 		    n++;
 		else
 		    FD_CLR(i, exceptfds);
@@ -1112,7 +1112,7 @@ int socket(int domain, int type, int protocol)
 	return -1;
     res = alloc_fd(FTYPE_SOCKET);
     printk("socket -> %d\n", res);
-    files[res].socket.fd = fd;
+    files[res].fd = fd;
     return res;
 }
 
@@ -1124,11 +1124,11 @@ int accept(int s, struct sockaddr *addr, socklen_t *addrlen)
 	errno = EBADF;
 	return -1;
     }
-    fd = lwip_accept(files[s].socket.fd, addr, addrlen);
+    fd = lwip_accept(files[s].fd, addr, addrlen);
     if (fd < 0)
 	return -1;
     res = alloc_fd(FTYPE_SOCKET);
-    files[res].socket.fd = fd;
+    files[res].fd = fd;
     printk("accepted on %d -> %d\n", s, res);
     return res;
 }
@@ -1141,7 +1141,7 @@ ret name proto \
 	errno = EBADF; \
 	return -1; \
     } \
-    s = files[s].socket.fd; \
+    s = files[s].fd; \
     return lwip_##name args; \
 }
 
