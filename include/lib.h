@@ -188,6 +188,7 @@ struct file {
     off_t offset;
     union {
         int fd; /* Any fd from an upper layer. */
+        void *dev;
 	struct {
 	    struct evtchn_port_list ports;
 	} evtchn;
