@@ -197,9 +197,6 @@ struct file {
 	    struct netfront_dev *dev;
 	} tap;
 	struct {
-	    struct blkfront_dev *dev;
-	} blk;
-	struct {
 	    struct kbdfront_dev *dev;
 	} kbd;
 	struct {

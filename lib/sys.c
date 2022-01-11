@@ -456,7 +456,7 @@ int close(int fd)
 #endif
 #ifdef CONFIG_BLKFRONT
 	case FTYPE_BLK:
-            shutdown_blkfront(files[fd].blk.dev);
+            shutdown_blkfront(files[fd].dev);
 	    files[fd].type = FTYPE_NONE;
 	    return 0;
 #endif
