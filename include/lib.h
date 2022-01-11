@@ -181,7 +181,7 @@ struct evtchn_port_info {
         int bound;
 };
 
-extern struct file {
+struct file {
     enum fd_type type;
     union {
 	struct {
@@ -236,7 +236,9 @@ extern struct file {
 #endif
     };
     int read;	/* maybe available for read */
-} files[];
+};
+
+extern struct file files[];
 
 int alloc_fd(enum fd_type type);
 void close_all_files(void);
