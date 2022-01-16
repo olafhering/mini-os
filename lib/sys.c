@@ -533,11 +533,6 @@ int close(int fd)
             res = lwip_close(files[fd].fd);
             break;
 #endif
-#ifdef CONFIG_LIBXENGNTTAB
-	case FTYPE_GNTMAP:
-	    minios_gnttab_close_fd(fd);
-            break;
-#endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
 	    shutdown_netfront(files[fd].dev);

@@ -170,8 +170,7 @@ extern struct wait_queue_head event_queue;
 #define FTYPE_TPMFRONT  10
 #define FTYPE_TPM_TIS   11
 #define FTYPE_XENBUS    12
-#define FTYPE_GNTMAP    13
-#define FTYPE_N         14
+#define FTYPE_N         13
 #define FTYPE_SPARE     16
 
 struct file {
@@ -181,7 +180,6 @@ struct file {
     union {
         int fd; /* Any fd from an upper layer. */
         void *dev;
-	struct gntmap gntmap;
     };
 };
 

@@ -3,7 +3,7 @@
  *
  * Diego Ongaro <diego.ongaro@citrix.com>, July 2008
  *
- * Files of type FTYPE_GNTMAP contain a gntmap, which is an array of
+ * Files of libxengnttab contain a gntmap, which is an array of
  * (host address, grant handle) pairs. Grant handles come from a hypervisor map
  * operation and are needed for the corresponding unmap.
  *
