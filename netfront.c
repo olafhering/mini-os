@@ -248,14 +248,14 @@ void netfront_select_handler(evtchn_port_t port, struct pt_regs *regs, void *dat
 {
     int flags;
     struct netfront_dev *dev = data;
-    int fd = dev->fd;
+    struct file *file = get_file_from_fd(dev->fd);
 
     local_irq_save(flags);
     network_tx_buf_gc(dev);
     local_irq_restore(flags);
 
-    if (fd != -1)
-        files[fd].read = true;
+    if ( file )
+        file->read = true;
     wake_up(&netfront_queue);
 }
 #endif
@@ -565,8 +565,53 @@ error:
 }
 
 #ifdef HAVE_LIBC
+static int netfront_read(struct file *file, void *buf, size_t nbytes)
+{
+    ssize_t ret;
+
+    ret = netfront_receive(file->dev, buf, nbytes);
+    if ( ret <= 0 )
+    {
+        errno = EAGAIN;
+        return -1;
+    }
+
+    return ret;
+}
+
+static int netfront_write(struct file *file, const void *buf, size_t nbytes)
+{
+    netfront_xmit(file->dev, buf, nbytes);
+
+    return nbytes;
+}
+
+static int netfront_close_fd(struct file *file)
+{
+    shutdown_netfront(file->dev);
+
+    return 0;
+}
+
+static const struct file_ops netfront_ops = {
+    .name = "net",
+    .read = netfront_read,
+    .write = netfront_write,
+    .close = netfront_close_fd,
+    .select_rd = select_read_flag,
+};
+
+static unsigned int ftype_netfront;
+
+__attribute__((constructor))
+static void netfront_initialize(void)
+{
+    ftype_netfront = alloc_file_type(&netfront_ops);
+}
+
 int netfront_tap_open(char *nodename) {
     struct netfront_dev *dev;
+    struct file *file;
 
     dev = init_netfront(nodename, NETIF_SELECT_RX, NULL, NULL);
     if (!dev) {
@@ -574,9 +619,10 @@ int netfront_tap_open(char *nodename) {
 	errno = EIO;
 	return -1;
     }
-    dev->fd = alloc_fd(FTYPE_TAP);
+    dev->fd = alloc_fd(ftype_netfront);
     printk("tap_open(%s) -> %d\n", nodename, dev->fd);
-    files[dev->fd].dev = dev;
+    file = get_file_from_fd(dev->fd);
+    file->dev = dev;
     return dev->fd;
 }
 #endif
@@ -720,7 +766,7 @@ void init_rx_buffers(struct netfront_dev *dev)
 }
 
 
-void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len)
+void netfront_xmit(struct netfront_dev *dev, const unsigned char *data, int len)
 {
     int flags;
     struct netif_tx_request *tx;
@@ -772,7 +818,8 @@ void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len)
 ssize_t netfront_receive(struct netfront_dev *dev, unsigned char *data, size_t len)
 {
     unsigned long flags;
-    int fd = dev->fd;
+    struct file *file = get_file_from_fd(dev->fd);
+
     ASSERT(current == main_thread);
 
     dev->rlen = 0;
@@ -781,9 +828,9 @@ ssize_t netfront_receive(struct netfront_dev *dev, unsigned char *data, size_t l
 
     local_irq_save(flags);
     network_rx(dev);
-    if (!dev->rlen && fd != -1)
+    if ( !dev->rlen && file )
         /* No data for us, make select stop returning */
-        files[fd].read = false;
+        file->read = false;
     /* Before re-enabling the interrupts, in case a packet just arrived in the
      * meanwhile. */
     local_irq_restore(flags);

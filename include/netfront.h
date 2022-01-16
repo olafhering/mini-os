@@ -10,7 +10,8 @@ struct netfront_dev *init_netfront(char *nodename,
                                    char **ip);
 char *netfront_get_netmask(struct netfront_dev *dev);
 char *netfront_get_gateway(struct netfront_dev *dev);
-void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len);
+void netfront_xmit(struct netfront_dev *dev, const unsigned char *data,
+                   int len);
 void shutdown_netfront(struct netfront_dev *dev);
 void suspend_netfront(void);
 void resume_netfront(void);

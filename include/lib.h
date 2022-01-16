@@ -165,8 +165,7 @@ extern struct wait_queue_head event_queue;
 #define FTYPE_SAVEFILE   5
 #define FTYPE_FB         6
 #define FTYPE_KBD        7
-#define FTYPE_TAP        8
-#define FTYPE_N          9
+#define FTYPE_N          8
 #define FTYPE_SPARE     16
 
 struct file {

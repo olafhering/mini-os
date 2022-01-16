@@ -309,17 +309,6 @@ int read(int fd, void *buf, size_t nbytes)
 	case FTYPE_SOCKET:
 	    return lwip_read(files[fd].fd, buf, nbytes);
 #endif
-#ifdef CONFIG_NETFRONT
-	case FTYPE_TAP: {
-	    ssize_t ret;
-	    ret = netfront_receive(files[fd].dev, buf, nbytes);
-	    if (ret <= 0) {
-		errno = EAGAIN;
-		return -1;
-	    }
-	    return ret;
-	}
-#endif
 #ifdef CONFIG_KBDFRONT
         case FTYPE_KBD: {
             int ret, n;
@@ -382,11 +371,6 @@ int write(int fd, const void *buf, size_t nbytes)
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
 	    return lwip_write(files[fd].fd, (void*) buf, nbytes);
-#endif
-#ifdef CONFIG_NETFRONT
-	case FTYPE_TAP:
-	    netfront_xmit(files[fd].dev, (void*) buf, nbytes);
-	    return nbytes;
 #endif
 	default:
 	    break;
@@ -485,11 +469,6 @@ int close(int fd)
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
             res = lwip_close(files[fd].fd);
-            break;
-#endif
-#ifdef CONFIG_NETFRONT
-	case FTYPE_TAP:
-	    shutdown_netfront(files[fd].dev);
             break;
 #endif
 #ifdef CONFIG_KBDFRONT
@@ -687,7 +666,6 @@ static const char *const file_types[] = {
     [FTYPE_NONE]    = "none",
     [FTYPE_CONSOLE] = "console",
     [FTYPE_SOCKET]  = "socket",
-    [FTYPE_TAP]     = "net",
     [FTYPE_KBD]     = "kbd",
     [FTYPE_FB]      = "fb",
 };
@@ -872,7 +850,6 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
                 n++;
 	    FD_CLR(i, exceptfds);
 	    break;
-	case FTYPE_TAP:
 	case FTYPE_KBD:
 	case FTYPE_FB:
 	    if (FD_ISSET(i, readfds)) {
