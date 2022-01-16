@@ -97,6 +97,40 @@ struct file files[NOFILE] = {
     { .type = FTYPE_CONSOLE }, /* stderr */
 };
 
+static const struct file_ops file_ops_none = {
+    .name = "none",
+};
+
+static const struct file_ops *file_ops[FTYPE_N + FTYPE_SPARE] = {
+    [FTYPE_NONE] = &file_ops_none,
+};
+
+unsigned int alloc_file_type(const struct file_ops *ops)
+{
+    static unsigned int i = FTYPE_N;
+    unsigned int ret;
+
+    pthread_mutex_lock(&fd_lock);
+
+    BUG_ON(i == ARRAY_SIZE(file_ops));
+    ret = i++;
+    file_ops[ret] = ops;
+
+    pthread_mutex_unlock(&fd_lock);
+
+    printk("New file type \"%s\"(%u) allocated\n", ops->name, ret);
+
+    return ret;
+}
+
+static const struct file_ops *get_file_ops(unsigned int type)
+{
+    if ( type >= ARRAY_SIZE(file_ops) || !file_ops[type] )
+        return &file_ops_none;
+
+    return file_ops[type];
+}
+
 struct file *get_file_from_fd(int fd)
 {
     if ( fd < 0 || fd >= ARRAY_SIZE(files) )
@@ -107,7 +141,7 @@ struct file *get_file_from_fd(int fd)
 
 DECLARE_WAIT_QUEUE_HEAD(event_queue);
 
-int alloc_fd(enum fd_type type)
+int alloc_fd(unsigned int type)
 {
     int i;
     pthread_mutex_lock(&fd_lock);
@@ -248,7 +282,17 @@ int isatty(int fd)
 
 int read(int fd, void *buf, size_t nbytes)
 {
-    switch (files[fd].type) {
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
+
+    if ( !file )
+        goto error;
+
+    ops = get_file_ops(file->type);
+    if ( ops->read )
+        return ops->read(file, buf, nbytes);
+
+    switch (file->type) {
         case FTYPE_SAVEFILE:
 	case FTYPE_CONSOLE: {
 	    int ret;
@@ -320,6 +364,8 @@ int read(int fd, void *buf, size_t nbytes)
 	default:
 	    break;
     }
+
+ error:
     printk("read(%d): Bad descriptor\n", fd);
     errno = EBADF;
     return -1;
@@ -327,7 +373,17 @@ int read(int fd, void *buf, size_t nbytes)
 
 int write(int fd, const void *buf, size_t nbytes)
 {
-    switch (files[fd].type) {
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
+
+    if ( !file )
+        goto error;
+
+    ops = get_file_ops(file->type);
+    if ( ops->write )
+        return ops->write(file, buf, nbytes);
+
+    switch (file->type) {
         case FTYPE_SAVEFILE: {
                 int ret = 0, tot = nbytes;
                 while (nbytes > 0) {
@@ -364,14 +420,61 @@ int write(int fd, const void *buf, size_t nbytes)
 	default:
 	    break;
     }
+
+ error:
     printk("write(%d): Bad descriptor\n", fd);
     errno = EBADF;
     return -1;
 }
 
+off_t lseek_default(struct file *file, off_t offset, int whence)
+{
+    switch ( whence )
+    {
+    case SEEK_SET:
+        file->offset = offset;
+        break;
+
+    case SEEK_CUR:
+        file->offset += offset;
+        break;
+
+    case SEEK_END:
+    {
+        struct stat st;
+        int ret;
+
+        ret = fstat(file - files, &st);
+        if ( ret )
+            return -1;
+        file->offset = st.st_size + offset;
+        break;
+    }
+
+    default:
+        errno = EINVAL;
+        return -1;
+    }
+
+    return file->offset;
+}
+
 off_t lseek(int fd, off_t offset, int whence)
 {
-    switch(files[fd].type) {
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
+
+    if ( !file )
+    {
+        errno = EBADF;
+        return (off_t)-1;
+    }
+
+    ops = get_file_ops(file->type);
+    if ( ops->lseek )
+        return ops->lseek(file, offset, whence);
+
+    switch(file->type) {
 #ifdef CONFIG_BLKFRONT
        case FTYPE_BLK:
           break;
@@ -392,28 +495,7 @@ off_t lseek(int fd, off_t offset, int whence)
           return (off_t) -1;
     }
 
-    switch (whence) {
-       case SEEK_SET:
-          files[fd].offset = offset;
-          break;
-       case SEEK_CUR:
-          files[fd].offset += offset;
-          break;
-       case SEEK_END:
-          {
-             struct stat st;
-             int ret;
-             ret = fstat(fd, &st);
-             if (ret)
-                return -1;
-             files[fd].offset = st.st_size + offset;
-             break;
-          }
-       default:
-          errno = EINVAL;
-          return -1;
-    }
-    return files[fd].offset;
+    return lseek_default(file, offset, whence);
 }
 
 int fsync(int fd) {
@@ -424,12 +506,21 @@ int fsync(int fd) {
 int close(int fd)
 {
     int res = 0;
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
 
-    if ( fd < 0 || fd >= ARRAY_SIZE(files) )
+    if ( !file )
         goto error;
 
+    ops = get_file_ops(file->type);
     printk("close(%d)\n", fd);
-    switch (files[fd].type) {
+    if ( ops->close )
+    {
+        res = ops->close(file);
+        goto out;
+    }
+
+    switch (file->type) {
         default:
             break;
 #ifdef CONFIG_XENBUS
@@ -492,6 +583,7 @@ int close(int fd)
             goto error;
     }
 
+ out:
     memset(files + fd, 0, sizeof(struct file));
     BUILD_BUG_ON(FTYPE_NONE != 0);
 
@@ -522,8 +614,19 @@ int stat(const char *path, struct stat *buf)
 
 int fstat(int fd, struct stat *buf)
 {
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
+
+    if ( !file )
+        goto error;
+
     init_stat(buf);
-    switch (files[fd].type) {
+
+    ops = get_file_ops(file->type);
+    if ( ops->fstat )
+        return ops->fstat(file, buf);
+
+    switch (file->type) {
 	case FTYPE_SAVEFILE:
 	case FTYPE_CONSOLE:
 	case FTYPE_SOCKET: {
@@ -557,6 +660,7 @@ int fstat(int fd, struct stat *buf)
 	    break;
     }
 
+ error:
     printk("statf(%d): Bad descriptor\n", fd);
     errno = EBADF;
     return -1;
@@ -588,6 +692,27 @@ int fcntl(int fd, int cmd, ...)
 {
     long arg;
     va_list ap;
+    int res;
+    struct file *file = get_file_from_fd(fd);
+    const struct file_ops *ops;
+
+    if ( !file )
+    {
+        errno = EBADF;
+        return -1;
+    }
+
+    ops = get_file_ops(files[fd].type);
+
+    if ( ops->fcntl )
+    {
+        va_start(ap, cmd);
+        res = ops->fcntl(file, cmd, ap);
+        va_end(ap);
+
+        return res;
+    }
+
     va_start(ap, cmd);
     arg = va_arg(ap, long);
     va_end(ap);
@@ -641,17 +766,28 @@ int closedir(DIR *dir)
 /* We assume that only the main thread calls select(). */
 
 #if defined(LIBC_DEBUG) || defined(LIBC_VERBOSE)
-static const char file_types[] = {
-    [FTYPE_NONE]	= 'N',
-    [FTYPE_CONSOLE]	= 'C',
-    [FTYPE_XENBUS]	= 'S',
-    [FTYPE_EVTCHN]	= 'E',
-    [FTYPE_SOCKET]	= 's',
-    [FTYPE_TAP]		= 'T',
-    [FTYPE_BLK]		= 'B',
-    [FTYPE_KBD]		= 'K',
-    [FTYPE_FB]		= 'G',
+static const char *const file_types[] = {
+    [FTYPE_NONE]    = "none",
+    [FTYPE_CONSOLE] = "console",
+    [FTYPE_XENBUS]  = "xenbus",
+    [FTYPE_EVTCHN]  = "evtchn",
+    [FTYPE_SOCKET]  = "socket",
+    [FTYPE_TAP]     = "net",
+    [FTYPE_BLK]     = "blk",
+    [FTYPE_KBD]     = "kbd",
+    [FTYPE_FB]      = "fb",
 };
+
+static const char *get_type_name(unsigned int type)
+{
+    if ( type < ARRAY_SIZE(file_ops) && file_ops[type] )
+        return file_ops[type]->name;
+
+    if ( type < ARRAY_SIZE(file_types) && file_types[type] )
+        return file_types[type];
+
+    return "none";
+}
 #endif
 #ifdef LIBC_DEBUG
 static void dump_set(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
@@ -663,7 +799,7 @@ static void dump_set(int nfds, fd_set *readfds, fd_set *writefds, fd_set *except
 	if (FD_ISSET(i, set)) { \
 	    if (comma) \
 		printk(", "); \
-	    printk("%d(%c)", i, file_types[files[i].type]); \
+            printk("%d(%s)", i, get_type_name(files[i].type)); \
 	    comma = 1; \
 	} \
     } \
@@ -697,7 +833,7 @@ static void dump_pollfds(struct pollfd *pfd, int nfds, int timeout)
         fd = pfd[i].fd;
         if (comma)
             printk(", ");
-        printk("%d(%c)/%02x", fd, file_types[files[fd].type],
+        printk("%d(%s)/%02x", fd, get_type_name(files[fd].type),
             pfd[i].events);
             comma = 1;
     }
@@ -708,6 +844,16 @@ static void dump_pollfds(struct pollfd *pfd, int nfds, int timeout)
 #else
 #define dump_pollfds(pfds, nfds, timeout)
 #endif
+
+bool select_yes(struct file *file)
+{
+    return true;
+}
+
+bool select_read_flag(struct file *file)
+{
+    return file->read;
+}
 
 /* Just poll without blocking */
 static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds)
@@ -760,11 +906,47 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 
     /* Then see others as well. */
     for (i = 0; i < nfds; i++) {
-	switch(files[i].type) {
+        struct file *file = get_file_from_fd(i);
+
+        if ( !file )
+        {
+            FD_CLR(i, readfds);
+            FD_CLR(i, writefds);
+            FD_CLR(i, exceptfds);
+            continue;
+        }
+
+        switch(file->type) {
 	default:
+        {
+            const struct file_ops *ops = file_ops[file->type];
+
+            if ( ops )
+            {
+                if ( FD_ISSET(i, readfds) )
+                {
+                    if ( ops->select_rd && ops->select_rd(file) )
+                        n++;
+                    else
+                        FD_CLR(i, readfds);
+                }
+                if ( FD_ISSET(i, writefds) )
+                {
+                    if ( ops->select_wr && ops->select_wr(file) )
+                        n++;
+                    else
+                        FD_CLR(i, writefds);
+                }
+                FD_CLR(i, exceptfds);
+
+                break;
+            }
+
 	    if (FD_ISSET(i, readfds) || FD_ISSET(i, writefds) || FD_ISSET(i, exceptfds))
 		printk("bogus fd %d in select\n", i);
 	    /* Fallthrough.  */
+        }
+
 	case FTYPE_CONSOLE:
 	    if (FD_ISSET(i, readfds)) {
                 if (xencons_ring_avail(files[i].dev))
@@ -842,7 +1024,7 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	printk("%d(%d): ", nb, sock_n);
 	for (i = 0; i < nfds; i++) {
 	    if (nbread[i] || nbwrite[i] || nbexcept[i])
-		printk(" %d(%c):", i, file_types[files[i].type]);
+                printk(" %d(%c):", i, get_type_name(files[i].type));
 	    if (nbread[i])
 	    	printk(" %dR", nbread[i]);
 	    if (nbwrite[i])

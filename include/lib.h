@@ -66,6 +66,7 @@
 
 #ifdef HAVE_LIBC
 #include <sys/queue.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
 #else
@@ -154,23 +155,23 @@ do {                                                           \
 void sanity_check(void);
 
 #ifdef HAVE_LIBC
-enum fd_type {
-    FTYPE_NONE = 0,
-    FTYPE_CONSOLE,
-    FTYPE_FILE,
-    FTYPE_XENBUS,
-    FTYPE_EVTCHN,
-    FTYPE_GNTMAP,
-    FTYPE_SOCKET,
-    FTYPE_TAP,
-    FTYPE_BLK,
-    FTYPE_KBD,
-    FTYPE_FB,
-    FTYPE_MEM,
-    FTYPE_SAVEFILE,
-    FTYPE_TPMFRONT,
-    FTYPE_TPM_TIS,
-};
+#define FTYPE_NONE       0
+#define FTYPE_CONSOLE    1
+#define FTYPE_FILE       2
+#define FTYPE_SOCKET     3
+#define FTYPE_MEM        4
+#define FTYPE_SAVEFILE   5
+#define FTYPE_FB         6
+#define FTYPE_KBD        7
+#define FTYPE_TAP        8
+#define FTYPE_BLK        9
+#define FTYPE_TPMFRONT  10
+#define FTYPE_TPM_TIS   11
+#define FTYPE_XENBUS    12
+#define FTYPE_GNTMAP    13
+#define FTYPE_EVTCHN    14
+#define FTYPE_N         15
+#define FTYPE_SPARE     16
 
 LIST_HEAD(evtchn_port_list, evtchn_port_info);
 
@@ -182,7 +183,7 @@ struct evtchn_port_info {
 };
 
 struct file {
-    enum fd_type type;
+    unsigned int type;
     bool read;	/* maybe available for read */
     off_t offset;
     union {
@@ -197,8 +198,26 @@ struct file {
 
 extern struct file files[];
 
+struct file_ops {
+    const char *name;
+    int (*read)(struct file *file, void *buf, size_t nbytes);
+    int (*write)(struct file *file, const void *buf, size_t nbytes);
+    off_t (*lseek)(struct file *file, off_t offset, int whence);
+    int (*close)(struct file *file);
+    int (*fstat)(struct file *file, struct stat *buf);
+    int (*fcntl)(struct file *file, int cmd, va_list args);
+    bool (*select_rd)(struct file *file);
+    bool (*select_wr)(struct file *file);
+};
+
+unsigned int alloc_file_type(const struct file_ops *ops);
+
+off_t lseek_default(struct file *file, off_t offset, int whence);
+bool select_yes(struct file *file);
+bool select_read_flag(struct file *file);
+
 struct file *get_file_from_fd(int fd);
-int alloc_fd(enum fd_type type);
+int alloc_fd(unsigned int type);
 void close_all_files(void);
 extern struct thread *main_thread;
 void sparse(unsigned long data, size_t size);
