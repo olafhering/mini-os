@@ -171,7 +171,10 @@ endif
 # arch/*/testbuild/*-yes and arch/*/testbuild/*-no should set ALL possible
 # CONFIG_ variables.
 
-# Configuration defaults
+# Configuration defaults:
+# CONFIG-y contains all items defaulting to "y"
+# CONFIG-n contains all items defaulting to "n"
+# CONFIG-x contains all items being calculated if not set explicitly
 CONFIG-y += CONFIG_START_NETWORK
 CONFIG-y += CONFIG_SPARSE_BSS
 CONFIG-y += CONFIG_BLKFRONT
@@ -205,7 +208,10 @@ CONFIG-$(lwip) += CONFIG_LWIP
 $(foreach i,$(CONFIG-y),$(eval $(i) ?= y))
 $(foreach i,$(CONFIG-n),$(eval $(i) ?= n))
 
-CONFIG-all := $(CONFIG-y) $(CONFIG-n)
+CONFIG-x += CONFIG_LIBXS
+CONFIG_LIBXS ?= $(CONFIG_XENBUS)
+
+CONFIG-all := $(CONFIG-y) $(CONFIG-n) $(CONFIG-x)
 
 # Export config items as compiler directives
 $(foreach i,$(CONFIG-all),$(eval DEFINES-$($(i)) += -D$(i)))

@@ -523,7 +523,7 @@ int close(int fd)
     switch (file->type) {
         default:
             break;
-#ifdef CONFIG_XENBUS
+#ifdef CONFIG_LIBXS
 	case FTYPE_XENBUS:
             xs_daemon_close((void*)(intptr_t) fd);
             break;
@@ -958,7 +958,7 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
                 n++;
 	    FD_CLR(i, exceptfds);
 	    break;
-#ifdef CONFIG_XENBUS
+#ifdef CONFIG_LIBXS
 	case FTYPE_XENBUS:
 	    if (FD_ISSET(i, readfds)) {
                 if (files[i].dev)
