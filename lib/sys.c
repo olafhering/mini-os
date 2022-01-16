@@ -101,6 +101,9 @@ static const struct file_ops file_ops_none = {
 
 static const struct file_ops *file_ops[FTYPE_N + FTYPE_SPARE] = {
     [FTYPE_NONE] = &file_ops_none,
+#ifdef CONFIG_CONSFRONT
+    [FTYPE_CONSOLE] = &console_ops,
+#endif
 };
 
 unsigned int alloc_file_type(const struct file_ops *ops)
@@ -212,31 +215,26 @@ int mkdir(const char *pathname, mode_t mode)
 #ifdef CONFIG_CONSFRONT
 int posix_openpt(int flags)
 {
-    struct consfront_dev *dev;
+    int fd;
 
     /* Ignore flags */
+    fd = open_consfront(NULL);
+    printk("fd(%d) = posix_openpt\n", fd);
 
-    dev = init_consfront(NULL);
-    dev->fd = alloc_fd(FTYPE_CONSOLE);
-    files[dev->fd].dev = dev;
-
-    printk("fd(%d) = posix_openpt\n", dev->fd);
-    return(dev->fd);
+    return fd;
 }
 
 int open_savefile(const char *path, int save)
 {
-    struct consfront_dev *dev;
+    int fd;
     char nodename[64];
 
     snprintf(nodename, sizeof(nodename), "device/console/%d", save ? SAVE_CONSOLE : RESTORE_CONSOLE);
 
-    dev = init_consfront(nodename);
-    dev->fd = alloc_fd(FTYPE_SAVEFILE);
-    files[dev->fd].dev = dev;
+    fd = open_consfront(nodename);
+    printk("fd(%d) = open_savefile\n", fd);
 
-    printk("fd(%d) = open_savefile\n", dev->fd);
-    return(dev->fd);
+    return fd;
 }
 #else
 int posix_openpt(int flags)
@@ -291,20 +289,6 @@ int read(int fd, void *buf, size_t nbytes)
         return ops->read(file, buf, nbytes);
 
     switch (file->type) {
-        case FTYPE_SAVEFILE:
-	case FTYPE_CONSOLE: {
-	    int ret;
-            DEFINE_WAIT(w);
-            while(1) {
-                add_waiter(w, console_queue);
-                ret = xencons_ring_recv(files[fd].dev, buf, nbytes);
-                if (ret)
-                    break;
-                schedule();
-            }
-            remove_waiter(w, console_queue);
-            return ret;
-        }
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
 	    return lwip_read(files[fd].fd, buf, nbytes);
@@ -332,18 +316,6 @@ int write(int fd, const void *buf, size_t nbytes)
         return ops->write(file, buf, nbytes);
 
     switch (file->type) {
-        case FTYPE_SAVEFILE: {
-                int ret = 0, tot = nbytes;
-                while (nbytes > 0) {
-                    ret = xencons_ring_send(files[fd].dev, (char *)buf, nbytes);
-                    nbytes -= ret;
-                    buf = (char *)buf + ret;
-                }
-                return tot - nbytes;
-            }
-	case FTYPE_CONSOLE:
-	    console_print(files[fd].dev, (char *)buf, nbytes);
-	    return nbytes;
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
 	    return lwip_write(files[fd].fd, (void*) buf, nbytes);
@@ -447,12 +419,6 @@ int close(int fd)
             res = lwip_close(files[fd].fd);
             break;
 #endif
-#ifdef CONFIG_CONSFRONT
-        case FTYPE_SAVEFILE:
-        case FTYPE_CONSOLE:
-            fini_consfront(files[fd].dev);
-            break;
-#endif
 	case FTYPE_NONE:
             goto error;
     }
@@ -501,15 +467,8 @@ int fstat(int fd, struct stat *buf)
         return ops->fstat(file, buf);
 
     switch (file->type) {
-	case FTYPE_SAVEFILE:
-	case FTYPE_CONSOLE:
 	case FTYPE_SOCKET: {
-            if (files[fd].type == FTYPE_CONSOLE)
-                buf->st_mode = S_IFCHR|S_IRUSR|S_IWUSR;
-            else if (files[fd].type == FTYPE_SOCKET)
-                buf->st_mode = S_IFSOCK|S_IRUSR|S_IWUSR;
-            else if (files[fd].type == FTYPE_SAVEFILE)
-                buf->st_mode = S_IFREG|S_IRUSR|S_IWUSR;
+            buf->st_mode = S_IFSOCK|S_IRUSR|S_IWUSR;
 	    buf->st_uid = 0;
 	    buf->st_gid = 0;
 	    buf->st_size = 0;
@@ -630,7 +589,6 @@ int closedir(DIR *dir)
 #if defined(LIBC_DEBUG) || defined(LIBC_VERBOSE)
 static const char *const file_types[] = {
     [FTYPE_NONE]    = "none",
-    [FTYPE_CONSOLE] = "console",
     [FTYPE_SOCKET]  = "socket",
 };
 
@@ -799,21 +757,18 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
             }
 
 	    if (FD_ISSET(i, readfds) || FD_ISSET(i, writefds) || FD_ISSET(i, exceptfds))
+            {
 		printk("bogus fd %d in select\n", i);
-	    /* Fallthrough.  */
+                if ( FD_ISSET(i, readfds) )
+                    FD_CLR(i, readfds);
+                if ( FD_ISSET(i, writefds) )
+                    FD_CLR(i, writefds);
+                if ( FD_ISSET(i, exceptfds) )
+                    FD_CLR(i, exceptfds);
+            }
+	    break;
         }
 
-	case FTYPE_CONSOLE:
-	    if (FD_ISSET(i, readfds)) {
-                if (xencons_ring_avail(files[i].dev))
-		    n++;
-		else
-		    FD_CLR(i, readfds);
-            }
-	    if (FD_ISSET(i, writefds))
-                n++;
-	    FD_CLR(i, exceptfds);
-	    break;
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
 	    if (FD_ISSET(i, readfds)) {

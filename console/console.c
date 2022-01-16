@@ -76,7 +76,7 @@ void xencons_tx(void)
 #endif
 
 
-void console_print(struct consfront_dev *dev, char *data, int length)
+void console_print(struct consfront_dev *dev, const char *data, int length)
 {
     char *curr_char, saved_char;
     char copied_str[length+1];

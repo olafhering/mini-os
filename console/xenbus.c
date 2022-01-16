@@ -192,3 +192,115 @@ void fini_consfront(struct consfront_dev *dev)
 {
     if (dev) free_consfront(dev);
 }
+
+#ifdef HAVE_LIBC
+static int consfront_read(struct file *file, void *buf, size_t nbytes)
+{
+    int ret;
+    DEFINE_WAIT(w);
+
+    while ( 1 )
+    {
+        add_waiter(w, console_queue);
+        ret = xencons_ring_recv(file->dev, buf, nbytes);
+        if ( ret )
+            break;
+        schedule();
+    }
+
+    remove_waiter(w, console_queue);
+
+    return ret;
+}
+
+static int savefile_write(struct file *file, const void *buf, size_t nbytes)
+{
+    int ret = 0, tot = nbytes;
+
+    while ( nbytes > 0 )
+    {
+        ret = xencons_ring_send(file->dev, buf, nbytes);
+        nbytes -= ret;
+        buf = (char *)buf + ret;
+    }
+
+    return tot - nbytes;
+}
+
+static int console_write(struct file *file, const void *buf, size_t nbytes)
+{
+    console_print(file->dev, buf, nbytes);
+
+    return nbytes;
+}
+
+static int consfront_close_fd(struct file *file)
+{
+    fini_consfront(file->dev);
+
+    return 0;
+}
+
+static int consfront_fstat(struct file *file, struct stat *buf)
+{
+    buf->st_mode = S_IRUSR | S_IWUSR;
+    buf->st_mode |= (file->type == FTYPE_CONSOLE) ? S_IFCHR : S_IFREG;
+    buf->st_atime = buf->st_mtime = buf->st_ctime = time(NULL);
+
+    return 0;
+}
+
+static bool consfront_select_rd(struct file *file)
+{
+    return xencons_ring_avail(file->dev);
+}
+
+static const struct file_ops savefile_ops = {
+    .name = "savefile",
+    .read = consfront_read,
+    .write = savefile_write,
+    .close = consfront_close_fd,
+    .fstat = consfront_fstat,
+    .select_rd = consfront_select_rd,
+    .select_wr = select_yes,
+};
+
+const struct file_ops console_ops = {
+    .name = "console",
+    .read = consfront_read,
+    .write = console_write,
+    .close = consfront_close_fd,
+    .fstat = consfront_fstat,
+    .select_rd = consfront_select_rd,
+    .select_wr = select_yes,
+};
+
+static unsigned int ftype_savefile;
+
+__attribute__((constructor))
+static void consfront_initialize(void)
+{
+    ftype_savefile = alloc_file_type(&savefile_ops);
+}
+
+int open_consfront(char *nodename)
+{
+    struct consfront_dev *dev;
+    struct file *file;
+
+    dev = init_consfront(nodename);
+    if ( !dev )
+        return -1;
+
+    dev->fd = alloc_fd(nodename ? ftype_savefile : FTYPE_CONSOLE);
+    file = get_file_from_fd(dev->fd);
+    if ( !file )
+    {
+        fini_consfront(dev);
+        return -1;
+    }
+    file->dev = dev;
+
+    return dev->fd;
+}
+#endif

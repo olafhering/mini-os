@@ -99,10 +99,10 @@ void console_handle_input(evtchn_port_t port, struct pt_regs *regs, void *data)
 {
 	struct consfront_dev *dev = (struct consfront_dev *) data;
 #ifdef HAVE_LIBC
-        int fd = dev ? dev->fd : -1;
+        struct file *file = dev ? get_file_from_fd(dev->fd) : NULL;
 
-        if (fd != -1)
-            files[fd].read = true;
+        if ( file )
+            file->read = true;
 
         wake_up(&console_queue);
 #else

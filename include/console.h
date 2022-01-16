@@ -39,6 +39,7 @@
 #include <mini-os/os.h>
 #include <mini-os/traps.h>
 #include <mini-os/types.h>
+#include <mini-os/lib.h>
 #include <xen/grant_table.h>
 #include <xenbus.h>
 #include <xen/io/console.h>
@@ -77,7 +78,7 @@ void xencons_tx(void);
 
 void get_console(void *p);
 void init_console(void);
-void console_print(struct consfront_dev *dev, char *data, int length);
+void console_print(struct consfront_dev *dev, const char *data, int length);
 void fini_consfront(struct consfront_dev *dev);
 void suspend_console(void);
 void resume_console(void);
@@ -93,5 +94,9 @@ int xencons_ring_send_no_notify(struct consfront_dev *dev, const char *data, uns
 int xencons_ring_avail(struct consfront_dev *dev);
 int xencons_ring_recv(struct consfront_dev *dev, char *data, unsigned len);
 void free_consfront(struct consfront_dev *dev);
+#ifdef HAVE_LIBC
+extern const struct file_ops console_ops;
+int open_consfront(char *nodename);
+#endif
 
 #endif /* _LIB_CONSOLE_H_ */
