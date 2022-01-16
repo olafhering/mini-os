@@ -533,11 +533,6 @@ int close(int fd)
             res = lwip_close(files[fd].fd);
             break;
 #endif
-#ifdef CONFIG_LIBXENEVTCHN
-	case FTYPE_EVTCHN:
-	    minios_evtchn_close_fd(fd);
-            break;
-#endif
 #ifdef CONFIG_LIBXENGNTTAB
 	case FTYPE_GNTMAP:
 	    minios_gnttab_close_fd(fd);
@@ -770,7 +765,6 @@ static const char *const file_types[] = {
     [FTYPE_NONE]    = "none",
     [FTYPE_CONSOLE] = "console",
     [FTYPE_XENBUS]  = "xenbus",
-    [FTYPE_EVTCHN]  = "evtchn",
     [FTYPE_SOCKET]  = "socket",
     [FTYPE_TAP]     = "net",
     [FTYPE_BLK]     = "blk",
@@ -970,7 +964,6 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	    FD_CLR(i, exceptfds);
 	    break;
 #endif
-	case FTYPE_EVTCHN:
 	case FTYPE_TAP:
 	case FTYPE_BLK:
 	case FTYPE_KBD:

@@ -155,6 +155,8 @@ do {                                                           \
 void sanity_check(void);
 
 #ifdef HAVE_LIBC
+extern struct wait_queue_head event_queue;
+
 #define FTYPE_NONE       0
 #define FTYPE_CONSOLE    1
 #define FTYPE_FILE       2
@@ -169,18 +171,8 @@ void sanity_check(void);
 #define FTYPE_TPM_TIS   11
 #define FTYPE_XENBUS    12
 #define FTYPE_GNTMAP    13
-#define FTYPE_EVTCHN    14
-#define FTYPE_N         15
+#define FTYPE_N         14
 #define FTYPE_SPARE     16
-
-LIST_HEAD(evtchn_port_list, evtchn_port_info);
-
-struct evtchn_port_info {
-        LIST_ENTRY(evtchn_port_info) list;
-        evtchn_port_t port;
-        unsigned long pending;
-        int bound;
-};
 
 struct file {
     unsigned int type;
@@ -189,9 +181,6 @@ struct file {
     union {
         int fd; /* Any fd from an upper layer. */
         void *dev;
-	struct {
-	    struct evtchn_port_list ports;
-	} evtchn;
 	struct gntmap gntmap;
     };
 };
