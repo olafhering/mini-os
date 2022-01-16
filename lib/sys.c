@@ -309,30 +309,6 @@ int read(int fd, void *buf, size_t nbytes)
 	case FTYPE_SOCKET:
 	    return lwip_read(files[fd].fd, buf, nbytes);
 #endif
-#ifdef CONFIG_KBDFRONT
-        case FTYPE_KBD: {
-            int ret, n;
-            n = nbytes / sizeof(union xenkbd_in_event);
-            ret = kbdfront_receive(files[fd].dev, buf, n);
-	    if (ret <= 0) {
-		errno = EAGAIN;
-		return -1;
-	    }
-	    return ret * sizeof(union xenkbd_in_event);
-        }
-#endif
-#ifdef CONFIG_FBFRONT
-        case FTYPE_FB: {
-            int ret, n;
-            n = nbytes / sizeof(union xenfb_in_event);
-            ret = fbfront_receive(files[fd].dev, buf, n);
-	    if (ret <= 0) {
-		errno = EAGAIN;
-		return -1;
-	    }
-	    return ret * sizeof(union xenfb_in_event);
-        }
-#endif
 	default:
 	    break;
     }
@@ -469,16 +445,6 @@ int close(int fd)
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
             res = lwip_close(files[fd].fd);
-            break;
-#endif
-#ifdef CONFIG_KBDFRONT
-	case FTYPE_KBD:
-            shutdown_kbdfront(files[fd].dev);
-            break;
-#endif
-#ifdef CONFIG_FBFRONT
-	case FTYPE_FB:
-            shutdown_fbfront(files[fd].dev);
             break;
 #endif
 #ifdef CONFIG_CONSFRONT
@@ -666,8 +632,6 @@ static const char *const file_types[] = {
     [FTYPE_NONE]    = "none",
     [FTYPE_CONSOLE] = "console",
     [FTYPE_SOCKET]  = "socket",
-    [FTYPE_KBD]     = "kbd",
-    [FTYPE_FB]      = "fb",
 };
 
 static const char *get_type_name(unsigned int type)
@@ -848,17 +812,6 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
             }
 	    if (FD_ISSET(i, writefds))
                 n++;
-	    FD_CLR(i, exceptfds);
-	    break;
-	case FTYPE_KBD:
-	case FTYPE_FB:
-	    if (FD_ISSET(i, readfds)) {
-		if (files[i].read)
-		    n++;
-		else
-		    FD_CLR(i, readfds);
-	    }
-	    FD_CLR(i, writefds);
 	    FD_CLR(i, exceptfds);
 	    break;
 #ifdef HAVE_LWIP

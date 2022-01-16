@@ -14,6 +14,9 @@
 #include <mini-os/xmalloc.h>
 #include <mini-os/fbfront.h>
 #include <mini-os/lib.h>
+#ifdef HAVE_LIBC
+#include <errno.h>
+#endif
 
 DECLARE_WAIT_QUEUE_HEAD(kbdfront_queue);
 
@@ -42,10 +45,10 @@ void kbdfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
 {
 #ifdef HAVE_LIBC
     struct kbdfront_dev *dev = data;
-    int fd = dev->fd;
+    struct file *file = get_file_from_fd(dev->fd);
 
-    if (fd != -1)
-        files[fd].read = true;
+    if ( file )
+        file->read = true;
 #endif
     wake_up(&kbdfront_queue);
 }
@@ -204,10 +207,12 @@ int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n
     struct xenkbd_page *page = dev->page;
     uint32_t prod, cons;
     int i;
-
 #ifdef HAVE_LIBC
-    if (dev->fd != -1) {
-        files[dev->fd].read = false;
+    struct file *file = get_file_from_fd(dev->fd);
+
+    if ( file )
+    {
+        file->read = false;
         mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
     }
 #endif
@@ -227,9 +232,9 @@ int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n
     notify_remote_via_evtchn(dev->evtchn);
 
 #ifdef HAVE_LIBC
-    if (cons != prod && dev->fd != -1)
+    if ( cons != prod && file )
         /* still some events to read */
-        files[dev->fd].read = true;
+        file->read = true;
 #endif
 
     return i;
@@ -298,11 +303,52 @@ close_kbdfront:
 }
 
 #ifdef HAVE_LIBC
+static int kbd_read(struct file *file, void *buf, size_t nbytes)
+{
+    int ret, n;
+
+    n = nbytes / sizeof(union xenkbd_in_event);
+    ret = kbdfront_receive(file->dev, buf, n);
+    if ( ret <= 0 )
+    {
+        errno = EAGAIN;
+        return -1;
+    }
+
+    return ret * sizeof(union xenkbd_in_event);
+}
+
+static int kbd_close_fd(struct file *file)
+{
+    shutdown_kbdfront(file->dev);
+
+    return 0;
+}
+
+static struct file_ops kbd_ops = {
+    .name = "kbd",
+    .read = kbd_read,
+    .close = kbd_close_fd,
+    .select_rd = select_read_flag,
+};
+
+static unsigned int ftype_kbd;
+
+__attribute__((constructor))
+static void kbdfront_initialize(void)
+{
+    ftype_kbd = alloc_file_type(&kbd_ops);
+}
+
 int kbdfront_open(struct kbdfront_dev *dev)
 {
-    dev->fd = alloc_fd(FTYPE_KBD);
+    struct file *file;
+
+    dev->fd = alloc_fd(ftype_kbd);
     printk("kbd_open(%s) -> %d\n", dev->nodename, dev->fd);
-    files[dev->fd].dev = dev;
+    file = get_file_from_fd(dev->fd);
+    file->dev = dev;
+
     return dev->fd;
 }
 #endif
@@ -346,10 +392,10 @@ void fbfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
 {
 #ifdef HAVE_LIBC
     struct fbfront_dev *dev = data;
-    int fd = dev->fd;
+    struct file *file = get_file_from_fd(dev->fd);
 
-    if (fd != -1)
-        files[fd].read = true;
+    if ( file )
+        file->read = true;
 #endif
     wake_up(&fbfront_queue);
 }
@@ -373,10 +419,12 @@ int fbfront_receive(struct fbfront_dev *dev, union xenfb_in_event *buf, int n)
     struct xenfb_page *page = dev->page;
     uint32_t prod, cons;
     int i;
-
 #ifdef HAVE_LIBC
-    if (dev->fd != -1) {
-        files[dev->fd].read = false;
+    struct file *file = get_file_from_fd(dev->fd);
+
+    if ( file )
+    {
+        file->read = false;
         mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
     }
 #endif
@@ -396,9 +444,9 @@ int fbfront_receive(struct fbfront_dev *dev, union xenfb_in_event *buf, int n)
     notify_remote_via_evtchn(dev->evtchn);
 
 #ifdef HAVE_LIBC
-    if (cons != prod && dev->fd != -1)
+    if ( cons != prod && file )
         /* still some events to read */
-        files[dev->fd].read = true;
+        file->read = true;
 #endif
 
     return i;
@@ -699,11 +747,51 @@ close_fbfront:
 }
 
 #ifdef HAVE_LIBC
+static int fbfront_read(struct file *file, void *buf, size_t nbytes)
+{
+    int ret, n;
+
+    n = nbytes / sizeof(union xenfb_in_event);
+    ret = fbfront_receive(file->dev, buf, n);
+    if ( ret <= 0 )
+    {
+        errno = EAGAIN;
+        return -1;
+    }
+
+    return ret * sizeof(union xenfb_in_event);
+}
+
+static int fbfront_close_fd(struct file *file)
+{
+    shutdown_fbfront(file->dev);
+
+    return 0;
+}
+
+static const struct file_ops fb_ops = {
+    .name = "fb",
+    .read = fbfront_read,
+    .close = fbfront_close_fd,
+    .select_rd = select_read_flag,
+};
+
+static unsigned int ftype_fb;
+
+__attribute__((constructor))
+static void fbfront_initialize(void)
+{
+    ftype_fb = alloc_file_type(&fb_ops);
+}
+
 int fbfront_open(struct fbfront_dev *dev)
 {
-    dev->fd = alloc_fd(FTYPE_FB);
+    struct file *file;
+
+    dev->fd = alloc_fd(ftype_fb);
     printk("fb_open(%s) -> %d\n", dev->nodename, dev->fd);
-    files[dev->fd].dev = dev;
+    file = get_file_from_fd(dev->fd);
+    file->dev = dev;
     return dev->fd;
 }
 #endif
