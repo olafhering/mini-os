@@ -99,10 +99,66 @@ static const struct file_ops file_ops_none = {
     .name = "none",
 };
 
+#ifdef HAVE_LWIP
+static int socket_read(struct file *file, void *buf, size_t nbytes)
+{
+    return lwip_read(file->fd, buf, nbytes);
+}
+
+static int socket_write(struct file *file, const void *buf, size_t nbytes)
+{
+    return lwip_write(file->fd, buf, nbytes);
+}
+
+static int close_socket_fd(struct file *file)
+{
+    return lwip_close(file->fd);
+}
+
+static int socket_fstat(struct file *file, struct stat *buf)
+{
+    buf->st_mode = S_IFSOCK | S_IRUSR | S_IWUSR;
+    buf->st_atime = buf->st_mtime = buf->st_ctime = time(NULL);
+
+    return 0;
+}
+
+static int socket_fcntl(struct file *file, int cmd, va_list args)
+{
+    long arg;
+
+    arg = va_arg(args, long);
+
+    if ( cmd == F_SETFL && !(arg & ~O_NONBLOCK) )
+    {
+        /* Only flag supported: non-blocking mode */
+        uint32_t nblock = !!(arg & O_NONBLOCK);
+
+        return lwip_ioctl(file->fd, FIONBIO, &nblock);
+    }
+
+    printk("socket fcntl(fd, %d, %lx/%lo)\n", cmd, arg, arg);
+    errno = ENOSYS;
+    return -1;
+}
+
+static const struct file_ops socket_ops = {
+    .name = "socket",
+    .read = socket_read,
+    .write = socket_write,
+    .close = close_socket_fd,
+    .fstat = socket_fstat,
+    .fcntl = socket_fcntl,
+};
+#endif
+
 static const struct file_ops *file_ops[FTYPE_N + FTYPE_SPARE] = {
     [FTYPE_NONE] = &file_ops_none,
 #ifdef CONFIG_CONSFRONT
     [FTYPE_CONSOLE] = &console_ops,
+#endif
+#ifdef HAVE_LWIP
+    [FTYPE_SOCKET] = &socket_ops,
 #endif
 };
 
@@ -288,15 +344,6 @@ int read(int fd, void *buf, size_t nbytes)
     if ( ops->read )
         return ops->read(file, buf, nbytes);
 
-    switch (file->type) {
-#ifdef HAVE_LWIP
-	case FTYPE_SOCKET:
-	    return lwip_read(files[fd].fd, buf, nbytes);
-#endif
-	default:
-	    break;
-    }
-
  error:
     printk("read(%d): Bad descriptor\n", fd);
     errno = EBADF;
@@ -314,15 +361,6 @@ int write(int fd, const void *buf, size_t nbytes)
     ops = get_file_ops(file->type);
     if ( ops->write )
         return ops->write(file, buf, nbytes);
-
-    switch (file->type) {
-#ifdef HAVE_LWIP
-	case FTYPE_SOCKET:
-	    return lwip_write(files[fd].fd, (void*) buf, nbytes);
-#endif
-	default:
-	    break;
-    }
 
  error:
     printk("write(%d): Bad descriptor\n", fd);
@@ -406,24 +444,10 @@ int close(int fd)
     ops = get_file_ops(file->type);
     printk("close(%d)\n", fd);
     if ( ops->close )
-    {
         res = ops->close(file);
-        goto out;
-    }
+    else if ( file->type == FTYPE_NONE )
+        goto error;
 
-    switch (file->type) {
-        default:
-            break;
-#ifdef HAVE_LWIP
-	case FTYPE_SOCKET:
-            res = lwip_close(files[fd].fd);
-            break;
-#endif
-	case FTYPE_NONE:
-            goto error;
-    }
-
- out:
     memset(files + fd, 0, sizeof(struct file));
     BUILD_BUG_ON(FTYPE_NONE != 0);
 
@@ -465,21 +489,6 @@ int fstat(int fd, struct stat *buf)
     ops = get_file_ops(file->type);
     if ( ops->fstat )
         return ops->fstat(file, buf);
-
-    switch (file->type) {
-	case FTYPE_SOCKET: {
-            buf->st_mode = S_IFSOCK|S_IRUSR|S_IWUSR;
-	    buf->st_uid = 0;
-	    buf->st_gid = 0;
-	    buf->st_size = 0;
-	    buf->st_atime = 
-	    buf->st_mtime = 
-	    buf->st_ctime = time(NULL);
-	    return 0;
-	}
-	default:
-	    break;
-    }
 
  error:
     printk("statf(%d): Bad descriptor\n", fd);
@@ -538,21 +547,9 @@ int fcntl(int fd, int cmd, ...)
     arg = va_arg(ap, long);
     va_end(ap);
 
-    switch (cmd) {
-#ifdef HAVE_LWIP
-	case F_SETFL:
-	    if (files[fd].type == FTYPE_SOCKET && !(arg & ~O_NONBLOCK)) {
-		/* Only flag supported: non-blocking mode */
-		uint32_t nblock = !!(arg & O_NONBLOCK);
-		return lwip_ioctl(files[fd].fd, FIONBIO, &nblock);
-	    }
-	    /* Fallthrough */
-#endif
-	default:
-	    printk("fcntl(%d, %d, %lx/%lo)\n", fd, cmd, arg, arg);
-	    errno = ENOSYS;
-	    return -1;
-    }
+    printk("fcntl(%d, %d, %lx/%lo)\n", fd, cmd, arg, arg);
+    errno = ENOSYS;
+    return -1;
 }
 
 DIR *opendir(const char *name)
@@ -586,23 +583,6 @@ int closedir(DIR *dir)
 
 /* We assume that only the main thread calls select(). */
 
-#if defined(LIBC_DEBUG) || defined(LIBC_VERBOSE)
-static const char *const file_types[] = {
-    [FTYPE_NONE]    = "none",
-    [FTYPE_SOCKET]  = "socket",
-};
-
-static const char *get_type_name(unsigned int type)
-{
-    if ( type < ARRAY_SIZE(file_ops) && file_ops[type] )
-        return file_ops[type]->name;
-
-    if ( type < ARRAY_SIZE(file_types) && file_types[type] )
-        return file_types[type];
-
-    return "none";
-}
-#endif
 #ifdef LIBC_DEBUG
 static void dump_set(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
@@ -613,7 +593,7 @@ static void dump_set(int nfds, fd_set *readfds, fd_set *writefds, fd_set *except
 	if (FD_ISSET(i, set)) { \
 	    if (comma) \
 		printk(", "); \
-            printk("%d(%s)", i, get_type_name(files[i].type)); \
+            printk("%d(%s)", i, get_file_ops(files[i].type)->name); \
 	    comma = 1; \
 	} \
     } \
@@ -647,7 +627,7 @@ static void dump_pollfds(struct pollfd *pfd, int nfds, int timeout)
         fd = pfd[i].fd;
         if (comma)
             printk(", ");
-        printk("%d(%s)/%02x", fd, get_type_name(files[fd].type),
+        printk("%d(%s)/%02x", fd, get_file_ops(files[fd].type)->name,
             pfd[i].events);
             comma = 1;
     }
@@ -809,7 +789,7 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	printk("%d(%d): ", nb, sock_n);
 	for (i = 0; i < nfds; i++) {
 	    if (nbread[i] || nbwrite[i] || nbexcept[i])
-                printk(" %d(%c):", i, get_type_name(files[i].type));
+                printk(" %d(%c):", i, get_file_ops(files[i].type)->name);
 	    if (nbread[i])
 	    	printk(" %dR", nbread[i]);
 	    if (nbwrite[i])
