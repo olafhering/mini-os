@@ -49,6 +49,10 @@
 void tpmfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data) {
    struct tpmfront_dev* dev = (struct tpmfront_dev*) data;
    tpmif_shared_page_t *shr = dev->page;
+#ifdef HAVE_LIBC
+    struct file *file = get_file_from_fd(dev->fd);
+#endif
+
    /*If we get a response when we didnt make a request, just ignore it */
    if(!dev->waiting) {
       return;
@@ -65,8 +69,9 @@ void tpmfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data) {
 
    dev->waiting = 0;
 #ifdef HAVE_LIBC
-   if(dev->fd >= 0) {
-      files[dev->fd].read = true;
+   if ( file )
+   {
+      file->read = true;
    }
 #endif
    wake_up(&dev->waitq);
@@ -405,6 +410,10 @@ int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
 #ifdef TPMFRONT_PRINT_DEBUG
    int i;
 #endif
+#ifdef HAVE_LIBC
+    struct file *file = dev ? get_file_from_fd(dev->fd) : NULL;
+#endif
+
    /* Error Checking */
    if(dev == NULL || dev->state != XenbusStateConnected) {
       TPMFRONT_ERR("Tried to send message through disconnected frontend\n");
@@ -437,9 +446,10 @@ int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
    dev->waiting = 1;
    dev->resplen = 0;
 #ifdef HAVE_LIBC
-   if(dev->fd >= 0) {
-      files[dev->fd].read = false;
-      files[dev->fd].offset = 0;
+   if ( file )
+   {
+      file->read = false;
+      file->offset = 0;
       dev->respgot = false;
    }
 #endif
@@ -529,25 +539,11 @@ int tpmfront_set_locality(struct tpmfront_dev* dev, int locality)
 
 #ifdef HAVE_LIBC
 #include <errno.h>
-int tpmfront_open(struct tpmfront_dev* dev)
-{
-   /* Silently prevent multiple opens */
-   if(dev->fd != -1) {
-      return dev->fd;
-   }
 
-   dev->fd = alloc_fd(FTYPE_TPMFRONT);
-   printk("tpmfront_open(%s) -> %d\n", dev->nodename, dev->fd);
-   files[dev->fd].dev = dev;
-   dev->respgot = false;
-   return dev->fd;
-}
-
-int tpmfront_posix_write(int fd, const uint8_t* buf, size_t count)
+static int tpmfront_posix_write(struct file *file, const void *buf, size_t count)
 {
    int rc;
-   struct tpmfront_dev* dev;
-   dev = files[fd].dev;
+   struct tpmfront_dev *dev = file->dev;
 
    if(count == 0) {
       return 0;
@@ -566,14 +562,12 @@ int tpmfront_posix_write(int fd, const uint8_t* buf, size_t count)
    return count;
 }
 
-int tpmfront_posix_read(int fd, uint8_t* buf, size_t count)
+static int tpmfront_posix_read(struct file *file, void *buf, size_t count)
 {
    int rc;
    uint8_t* dummybuf;
    size_t dummysz;
-   struct tpmfront_dev* dev;
-
-   dev = files[fd].dev;
+   struct tpmfront_dev *dev = file->dev;
 
    if(count == 0) {
       return 0;
@@ -588,29 +582,32 @@ int tpmfront_posix_read(int fd, uint8_t* buf, size_t count)
    }
 
    /* handle EOF case */
-   if(files[dev->fd].offset >= dev->resplen) {
+   if ( file->offset >= dev->resplen )
+   {
       return 0;
    }
 
    /* Compute the number of bytes and do the copy operation */
-   if((rc = min(count, dev->resplen - files[dev->fd].offset)) != 0) {
-      memcpy(buf, dev->respbuf + files[dev->fd].offset, rc);
-      files[dev->fd].offset += rc;
+   if ( (rc = min(count, dev->resplen - file->offset)) != 0 )
+   {
+      memcpy(buf, dev->respbuf + file->offset, rc);
+      file->offset += rc;
    }
 
    return rc;
 }
 
-int tpmfront_posix_fstat(int fd, struct stat* buf)
+static int tpmfront_posix_fstat(struct file *file, struct stat *buf)
 {
    uint8_t* dummybuf;
    size_t dummysz;
    int rc;
-   struct tpmfront_dev* dev = files[fd].dev;
+   struct tpmfront_dev *dev = file->dev;
 
    /* If we have a response waiting, then read it now from the backend
     * so we can get its length*/
-   if(dev->waiting || (files[dev->fd].read && !dev->respgot)) {
+   if ( dev->waiting || (file->read && !dev->respgot) )
+   {
       if ((rc = tpmfront_recv(dev, &dummybuf, &dummysz)) != 0) {
 	 errno = EIO;
 	 return -1;
@@ -626,5 +623,45 @@ int tpmfront_posix_fstat(int fd, struct stat* buf)
    return 0;
 }
 
+static int tpmfront_close_fd(struct file *file)
+{
+    shutdown_tpmfront(file->dev);
+
+    return 0;
+}
+
+static const struct file_ops tpmfront_ops = {
+    .name = "tpmfront",
+    .read = tpmfront_posix_read,
+    .write = tpmfront_posix_write,
+    .lseek = lseek_default,
+    .close = tpmfront_close_fd,
+    .fstat = tpmfront_posix_fstat,
+};
+
+static unsigned int ftype_tpmfront;
+
+__attribute__((constructor))
+static void tpmfront_initialize(void)
+{
+    ftype_tpmfront = alloc_file_type(&tpmfront_ops);
+}
+
+int tpmfront_open(struct tpmfront_dev *dev)
+{
+    struct file *file;
+
+    /* Silently prevent multiple opens */
+    if ( dev->fd != -1 )
+        return dev->fd;
+
+    dev->fd = alloc_fd(ftype_tpmfront);
+    printk("tpmfront_open(%s) -> %d\n", dev->nodename, dev->fd);
+    file = get_file_from_fd(dev->fd);
+    file->dev = dev;
+    dev->respgot = false;
+
+    return dev->fd;
+}
 
 #endif

@@ -81,7 +81,6 @@ int tpmfront_cmd(struct tpmfront_dev* dev, uint8_t* req, size_t reqlen, uint8_t*
 int tpmfront_set_locality(struct tpmfront_dev* dev, int locality);
 
 #ifdef HAVE_LIBC
-#include <sys/stat.h>
 /* POSIX IO functions:
  * use tpmfront_open() to get a file descriptor to the tpm device
  * use write() on the fd to send a command to the backend. You must
@@ -90,10 +89,6 @@ int tpmfront_set_locality(struct tpmfront_dev* dev, int locality);
  * fstat() to get the size of the response and lseek() to seek on it.
  */
 int tpmfront_open(struct tpmfront_dev* dev);
-int tpmfront_posix_read(int fd, uint8_t* buf, size_t count);
-int tpmfront_posix_write(int fd, const uint8_t* buf, size_t count);
-int tpmfront_posix_fstat(int fd, struct stat* buf);
 #endif
-
 
 #endif

@@ -28,7 +28,6 @@
 #include <netfront.h>
 #include <blkfront.h>
 #include <fbfront.h>
-#include <tpmfront.h>
 #include <xenbus.h>
 #include <xenstore.h>
 #include <poll.h>
@@ -350,11 +349,6 @@ int read(int fd, void *buf, size_t nbytes)
 	    return blkfront_posix_read(fd, buf, nbytes);
         }
 #endif
-#ifdef CONFIG_TPMFRONT
-        case FTYPE_TPMFRONT: {
-	    return tpmfront_posix_read(fd, buf, nbytes);
-        }
-#endif
 	default:
 	    break;
     }
@@ -402,10 +396,6 @@ int write(int fd, const void *buf, size_t nbytes)
 #ifdef CONFIG_BLKFRONT
 	case FTYPE_BLK:
 	    return blkfront_posix_write(fd, buf, nbytes);
-#endif
-#ifdef CONFIG_TPMFRONT
-	case FTYPE_TPMFRONT:
-	    return tpmfront_posix_write(fd, buf, nbytes);
 #endif
 	default:
 	    break;
@@ -469,10 +459,6 @@ off_t lseek(int fd, off_t offset, int whence)
        case FTYPE_BLK:
           break;
 #endif
-#ifdef CONFIG_TPMFRONT
-       case FTYPE_TPMFRONT:
-          break;
-#endif
        case FTYPE_FILE:
           break;
        default:
@@ -522,11 +508,6 @@ int close(int fd)
 #ifdef CONFIG_BLKFRONT
 	case FTYPE_BLK:
             shutdown_blkfront(files[fd].dev);
-            break;
-#endif
-#ifdef CONFIG_TPMFRONT
-	case FTYPE_TPMFRONT:
-            shutdown_tpmfront(files[fd].dev);
             break;
 #endif
 #ifdef CONFIG_KBDFRONT
@@ -613,10 +594,6 @@ int fstat(int fd, struct stat *buf)
 #ifdef CONFIG_BLKFRONT
 	case FTYPE_BLK:
 	   return blkfront_posix_fstat(fd, buf);
-#endif
-#ifdef CONFIG_TPMFRONT
-	case FTYPE_TPMFRONT:
-	   return tpmfront_posix_fstat(fd, buf);
 #endif
 	default:
 	    break;
