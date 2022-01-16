@@ -89,7 +89,7 @@ extern void minios_evtchn_close_fd(int fd);
 extern void minios_gnttab_close_fd(int fd);
 
 pthread_mutex_t fd_lock = PTHREAD_MUTEX_INITIALIZER;
-struct file files[NOFILE] = {
+static struct file files[NOFILE] = {
     { .type = FTYPE_CONSOLE }, /* stdin */
     { .type = FTYPE_CONSOLE }, /* stdout */
     { .type = FTYPE_CONSOLE }, /* stderr */

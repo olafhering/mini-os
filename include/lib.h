@@ -175,8 +175,6 @@ struct file {
     };
 };
 
-extern struct file files[];
-
 struct file_ops {
     const char *name;
     int (*read)(struct file *file, void *buf, size_t nbytes);
