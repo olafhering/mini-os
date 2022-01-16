@@ -37,14 +37,11 @@ struct tpm_chip;
 
 struct tpm_chip* init_tpm_tis(unsigned long baseaddr, int localities, unsigned int irq);
 struct tpm_chip* init_tpm2_tis(unsigned long baseaddr, int localities, unsigned int irq);
-void shutdown_tpm_tis(struct tpm_chip* tpm);
 
 int tpm_tis_request_locality(struct tpm_chip* tpm, int locality);
 int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** resp, size_t* resplen);
 
 #ifdef HAVE_LIBC
-#include <sys/stat.h>
-#include <fcntl.h>
 /* POSIX IO functions:
  * use tpm_tis_open() to get a file descriptor to the tpm device
  * use write() on the fd to send a command to the backend. You must
@@ -53,9 +50,6 @@ int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** res
  * fstat() to get the size of the response and lseek() to seek on it.
  */
 int tpm_tis_open(struct tpm_chip* tpm);
-int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count);
-int tpm_tis_posix_write(int fd, const uint8_t* buf, size_t count);
-int tpm_tis_posix_fstat(int fd, struct stat* buf);
 #endif
 
 #endif

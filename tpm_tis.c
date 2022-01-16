@@ -792,6 +792,9 @@ int tpm_tis_send(struct tpm_chip* tpm, uint8_t* buf, size_t len) {
    int status, burstcnt = 0;
    int count = 0;
    uint32_t ordinal;
+#ifdef HAVE_LIBC
+   struct file *file = get_file_from_fd(tpm->fd);
+#endif
 
    if(tpm_tis_request_locality(tpm, tpm->locality) < 0) {
       return -EBUSY;
@@ -844,9 +847,10 @@ int tpm_tis_send(struct tpm_chip* tpm, uint8_t* buf, size_t len) {
       }
    }
 #ifdef HAVE_LIBC
-   if(tpm->fd >= 0) {
-      files[tpm->fd].read = false;
-      files[tpm->fd].offset = 0;
+   if ( file )
+   {
+      file->read = false;
+      file->offset = 0;
    }
 #endif
    return len;
@@ -1093,6 +1097,25 @@ ssize_t tpm_getcap(struct tpm_chip *chip, uint32_t subcap_id, cap_t *cap,
         return rc;
 }
 
+static void shutdown_tpm_tis(struct tpm_chip *tpm)
+{
+    int i;
+
+    printk("Shutting down tpm_tis device\n");
+
+    iowrite32(TPM_INT_ENABLE(tpm, tpm->locality), ~TPM_GLOBAL_INT_ENABLE);
+
+    /* Unmap all of the mmio pages */
+    for ( i = 0; i < 5; ++i )
+    {
+        if ( tpm->pages[i] != NULL )
+        {
+            iounmap(tpm->pages[i], PAGE_SIZE);
+            tpm->pages[i] = NULL;
+        }
+    }
+    free(tpm);
+}
 
 struct tpm_chip* init_tpm_tis(unsigned long baseaddr, int localities, unsigned int irq)
 {
@@ -1242,25 +1265,6 @@ abort_egress:
    return NULL;
 }
 
-void shutdown_tpm_tis(struct tpm_chip* tpm){
-   int i;
-
-   printk("Shutting down tpm_tis device\n");
-
-   iowrite32(TPM_INT_ENABLE(tpm, tpm->locality), ~TPM_GLOBAL_INT_ENABLE);
-
-   /*Unmap all of the mmio pages */
-   for(i = 0; i < 5; ++i) {
-      if(tpm->pages[i] != NULL) {
-	 iounmap(tpm->pages[i], PAGE_SIZE);
-	 tpm->pages[i] = NULL;
-      }
-   }
-   free(tpm);
-   return;
-}
-
-
 int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** resp, size_t* resplen)
 {
    if(tpm->locality < 0) {
@@ -1279,23 +1283,19 @@ int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** res
 }
 
 #ifdef HAVE_LIBC
-int tpm_tis_open(struct tpm_chip* tpm)
-{
-   /* Silently prevent multiple opens */
-   if(tpm->fd != -1) {
-      return tpm->fd;
-   }
+#include <sys/stat.h>
+#include <fcntl.h>
 
-   tpm->fd = alloc_fd(FTYPE_TPM_TIS);
-   printk("tpm_tis_open() -> %d\n", tpm->fd);
-   files[tpm->fd].dev = tpm;
-   return tpm->fd;
+static int tpm_tis_close(struct file *file)
+{
+    shutdown_tpm_tis(file->dev);
+
+    return 0;
 }
 
-int tpm_tis_posix_write(int fd, const uint8_t* buf, size_t count)
+static int tpm_tis_posix_write(struct file *file, const void *buf, size_t count)
 {
-   struct tpm_chip* tpm;
-   tpm = files[fd].dev;
+   struct tpm_chip *tpm = file->dev;
 
    if(tpm->locality < 0) {
       printk("tpm_tis_posix_write() failed! locality not set!\n");
@@ -1319,11 +1319,10 @@ int tpm_tis_posix_write(int fd, const uint8_t* buf, size_t count)
    return count;
 }
 
-int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count)
+static int tpm_tis_posix_read(struct file *file, void *buf, size_t count)
 {
    int rc;
-   struct tpm_chip* tpm;
-   tpm = files[fd].dev;
+   struct tpm_chip *tpm = file->dev;
 
    if(count == 0) {
       return 0;
@@ -1337,20 +1336,21 @@ int tpm_tis_posix_read(int fd, uint8_t* buf, size_t count)
 
 
    /* Handle EOF case */
-   if(files[fd].offset >= tpm->data_len) {
+   if ( file->offset >= tpm->data_len )
+   {
       rc = 0;
    } else {
-      rc = min(tpm->data_len - files[fd].offset, count);
-      memcpy(buf, tpm->data_buffer + files[fd].offset, rc);
+      rc = min(tpm->data_len - file->offset, count);
+      memcpy(buf, tpm->data_buffer + file->offset, rc);
    }
-   files[fd].offset += rc;
+   file->offset += rc;
    /* Reset the data pending flag */
    return rc;
 }
-int tpm_tis_posix_fstat(int fd, struct stat* buf)
+
+static int tpm_tis_posix_fstat(struct file *file, struct stat *buf)
 {
-   struct tpm_chip* tpm;
-   tpm = files[fd].dev;
+   struct tpm_chip *tpm = file->dev;
 
    buf->st_mode = O_RDWR;
    buf->st_uid = 0;
@@ -1358,6 +1358,39 @@ int tpm_tis_posix_fstat(int fd, struct stat* buf)
    buf->st_size = be32_to_cpu(*((uint32_t*)(tpm->data_buffer + 2)));
    buf->st_atime = buf->st_mtime = buf->st_ctime = time(NULL);
    return 0;
+}
+
+static const struct file_ops tpm_tis_ops = {
+    .name = "tpm_tis",
+    .read = tpm_tis_posix_read,
+    .write = tpm_tis_posix_write,
+    .lseek = lseek_default,
+    .close = tpm_tis_close,
+    .fstat = tpm_tis_posix_fstat,
+};
+
+static unsigned int ftype_tis;
+
+__attribute__((constructor))
+static void tpm_tis_initialize(void)
+{
+    ftype_tis = alloc_file_type(&tpm_tis_ops);
+}
+
+int tpm_tis_open(struct tpm_chip *tpm)
+{
+    struct file *file;
+
+    /* Silently prevent multiple opens */
+    if ( tpm->fd != -1 )
+        return tpm->fd;
+
+    tpm->fd = alloc_fd(ftype_tis);
+    printk("tpm_tis_open() -> %d\n", tpm->fd);
+    file = get_file_from_fd(tpm->fd);
+    file->dev = tpm;
+
+    return tpm->fd;
 }
 
 /* TPM 2.0 */
