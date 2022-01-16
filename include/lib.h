@@ -198,6 +198,7 @@ struct file {
 
 extern struct file files[];
 
+struct file *get_file_from_fd(int fd);
 int alloc_fd(enum fd_type type);
 void close_all_files(void);
 extern struct thread *main_thread;

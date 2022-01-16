@@ -98,6 +98,14 @@ struct file files[NOFILE] = {
     { .type = FTYPE_CONSOLE }, /* stderr */
 };
 
+struct file *get_file_from_fd(int fd)
+{
+    if ( fd < 0 || fd >= ARRAY_SIZE(files) )
+        return NULL;
+
+    return (files[fd].type == FTYPE_NONE) ? NULL : files + fd;
+}
+
 DECLARE_WAIT_QUEUE_HEAD(event_queue);
 
 int alloc_fd(enum fd_type type)
