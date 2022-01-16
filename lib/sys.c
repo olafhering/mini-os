@@ -87,7 +87,6 @@
     }
 
 #define NOFILE 32
-extern void minios_interface_close_fd(int fd);
 extern void minios_evtchn_close_fd(int fd);
 extern void minios_gnttab_close_fd(int fd);
 
@@ -443,11 +442,6 @@ int close(int fd)
             res = lwip_close(files[fd].fd);
             break;
 #endif
-#ifdef CONFIG_LIBXENCTRL
-	case FTYPE_XC:
-	    minios_interface_close_fd(fd);
-            break;
-#endif
 #ifdef CONFIG_LIBXENEVTCHN
 	case FTYPE_EVTCHN:
 	    minios_evtchn_close_fd(fd);
@@ -651,7 +645,6 @@ static const char file_types[] = {
     [FTYPE_NONE]	= 'N',
     [FTYPE_CONSOLE]	= 'C',
     [FTYPE_XENBUS]	= 'S',
-    [FTYPE_XC]		= 'X',
     [FTYPE_EVTCHN]	= 'E',
     [FTYPE_SOCKET]	= 's',
     [FTYPE_TAP]		= 'T',
@@ -1383,12 +1376,6 @@ void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset
 
     if (fd == -1)
         return map_zero(n, 1);
-#ifdef CONFIG_LIBXENCTRL
-    else if (files[fd].type == FTYPE_XC) {
-        unsigned long zero = 0;
-        return map_frames_ex(&zero, n, 0, 0, 1, DOMID_SELF, NULL, 0);
-    }
-#endif
     else if (files[fd].type == FTYPE_MEM) {
         unsigned long first_mfn = offset >> PAGE_SHIFT;
         return map_frames_ex(&first_mfn, n, 0, 1, 1, DOMID_IO, NULL, _PAGE_PRESENT|_PAGE_RW);

@@ -159,7 +159,6 @@ enum fd_type {
     FTYPE_CONSOLE,
     FTYPE_FILE,
     FTYPE_XENBUS,
-    FTYPE_XC,
     FTYPE_EVTCHN,
     FTYPE_GNTMAP,
     FTYPE_SOCKET,
