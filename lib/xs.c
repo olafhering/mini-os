@@ -18,23 +18,56 @@ static inline int _xs_fileno(struct xs_handle *h) {
     return (intptr_t) h;
 }
 
+static int xs_close_fd(struct file *file)
+{
+    struct xenbus_event *event, *next;
+
+    for ( event = file->dev; event; event = next )
+    {
+        next = event->next;
+        free(event);
+    }
+
+    return 0;
+}
+
+static bool xs_can_read(struct file *file)
+{
+    return file->dev;
+}
+
+static const struct file_ops xenbus_ops = {
+    .name = "xenbus",
+    .close = xs_close_fd,
+    .select_rd = xs_can_read,
+};
+
+static unsigned int ftype_xenbus;
+
+__attribute__((constructor))
+static void xs_initialize(void)
+{
+    ftype_xenbus = alloc_file_type(&xenbus_ops);
+}
+
 struct xs_handle *xs_daemon_open()
 {
-    int fd = alloc_fd(FTYPE_XENBUS);
-    files[fd].dev = NULL;
-    printk("xs_daemon_open -> %d, %p\n", fd, &files[fd].dev);
+    int fd;
+    struct file *file;
+
+    fd = alloc_fd(ftype_xenbus);
+    file = get_file_from_fd(fd);
+    if ( !file )
+        return NULL;
+
+    file->dev = NULL;
+    printk("xs_daemon_open -> %d, %p\n", fd, &file->dev);
     return (void*)(intptr_t) fd;
 }
 
 void xs_daemon_close(struct xs_handle *h)
 {
-    int fd = _xs_fileno(h);
-    struct xenbus_event *event, *next;
-    for (event = files[fd].dev; event; event = next)
-    {
-        next = event->next;
-        free(event);
-    }
+    close(_xs_fileno(h));
 }
 
 int xs_fileno(struct xs_handle *h)
@@ -169,18 +202,20 @@ char **xs_directory(struct xs_handle *h, xs_transaction_t t,
 
 bool xs_watch(struct xs_handle *h, const char *path, const char *token)
 {
-    int fd = _xs_fileno(h);
+    struct file *file = get_file_from_fd(_xs_fileno(h));
+
     printk("xs_watch(%s, %s)\n", path, token);
     return xs_bool(xenbus_watch_path_token(XBT_NULL, path, token,
-                   (xenbus_event_queue *)&files[fd].dev));
+                                           (xenbus_event_queue *)&file->dev));
 }
 
 char **xs_read_watch(struct xs_handle *h, unsigned int *num)
 {
-    int fd = _xs_fileno(h);
     struct xenbus_event *event;
-    event = files[fd].dev;
-    files[fd].dev = event->next;
+    struct file *file = get_file_from_fd(_xs_fileno(h));
+
+    event = file->dev;
+    file->dev = event->next;
     printk("xs_read_watch() -> %s %s\n", event->path, event->token);
     *num = 2;
     return (char **) &event->path;

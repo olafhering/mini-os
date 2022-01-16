@@ -169,8 +169,7 @@ extern struct wait_queue_head event_queue;
 #define FTYPE_BLK        9
 #define FTYPE_TPMFRONT  10
 #define FTYPE_TPM_TIS   11
-#define FTYPE_XENBUS    12
-#define FTYPE_N         13
+#define FTYPE_N         12
 #define FTYPE_SPARE     16
 
 struct file {

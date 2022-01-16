@@ -523,11 +523,6 @@ int close(int fd)
     switch (file->type) {
         default:
             break;
-#ifdef CONFIG_LIBXS
-	case FTYPE_XENBUS:
-            xs_daemon_close((void*)(intptr_t) fd);
-            break;
-#endif
 #ifdef HAVE_LWIP
 	case FTYPE_SOCKET:
             res = lwip_close(files[fd].fd);
@@ -759,7 +754,6 @@ int closedir(DIR *dir)
 static const char *const file_types[] = {
     [FTYPE_NONE]    = "none",
     [FTYPE_CONSOLE] = "console",
-    [FTYPE_XENBUS]  = "xenbus",
     [FTYPE_SOCKET]  = "socket",
     [FTYPE_TAP]     = "net",
     [FTYPE_BLK]     = "blk",
@@ -947,18 +941,6 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
                 n++;
 	    FD_CLR(i, exceptfds);
 	    break;
-#ifdef CONFIG_LIBXS
-	case FTYPE_XENBUS:
-	    if (FD_ISSET(i, readfds)) {
-                if (files[i].dev)
-		    n++;
-		else
-		    FD_CLR(i, readfds);
-	    }
-	    FD_CLR(i, writefds);
-	    FD_CLR(i, exceptfds);
-	    break;
-#endif
 	case FTYPE_TAP:
 	case FTYPE_BLK:
 	case FTYPE_KBD:
