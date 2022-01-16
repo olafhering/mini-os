@@ -35,7 +35,6 @@ void xs_daemon_close(struct xs_handle *h)
         next = event->next;
         free(event);
     }
-    files[fd].type = FTYPE_NONE;
 }
 
 int xs_fileno(struct xs_handle *h)

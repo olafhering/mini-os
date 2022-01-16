@@ -424,84 +424,86 @@ int fsync(int fd) {
 
 int close(int fd)
 {
+    int res = 0;
+
+    if ( fd < 0 || fd >= ARRAY_SIZE(files) )
+        goto error;
+
     printk("close(%d)\n", fd);
     switch (files[fd].type) {
         default:
-	    files[fd].type = FTYPE_NONE;
-	    return 0;
+            break;
 #ifdef CONFIG_XENBUS
 	case FTYPE_XENBUS:
             xs_daemon_close((void*)(intptr_t) fd);
-            return 0;
+            break;
 #endif
 #ifdef HAVE_LWIP
-	case FTYPE_SOCKET: {
-	    int res = lwip_close(files[fd].fd);
-	    files[fd].type = FTYPE_NONE;
-	    return res;
-	}
+	case FTYPE_SOCKET:
+            res = lwip_close(files[fd].fd);
+            break;
 #endif
 #ifdef CONFIG_LIBXENCTRL
 	case FTYPE_XC:
 	    minios_interface_close_fd(fd);
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_LIBXENEVTCHN
 	case FTYPE_EVTCHN:
 	    minios_evtchn_close_fd(fd);
-            return 0;
+            break;
 #endif
 #ifdef CONFIG_LIBXENGNTTAB
 	case FTYPE_GNTMAP:
 	    minios_gnttab_close_fd(fd);
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
 	    shutdown_netfront(files[fd].dev);
-	    files[fd].type = FTYPE_NONE;
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_BLKFRONT
 	case FTYPE_BLK:
             shutdown_blkfront(files[fd].dev);
-	    files[fd].type = FTYPE_NONE;
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_TPMFRONT
 	case FTYPE_TPMFRONT:
             shutdown_tpmfront(files[fd].dev);
-	    files[fd].type = FTYPE_NONE;
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_TPM_TIS
 	case FTYPE_TPM_TIS:
             shutdown_tpm_tis(files[fd].dev);
-	    files[fd].type = FTYPE_NONE;
-	    return 0;
+            break;
 #endif
 #ifdef CONFIG_KBDFRONT
 	case FTYPE_KBD:
             shutdown_kbdfront(files[fd].dev);
-            files[fd].type = FTYPE_NONE;
-            return 0;
+            break;
 #endif
 #ifdef CONFIG_FBFRONT
 	case FTYPE_FB:
             shutdown_fbfront(files[fd].dev);
-            files[fd].type = FTYPE_NONE;
-            return 0;
+            break;
 #endif
 #ifdef CONFIG_CONSFRONT
         case FTYPE_SAVEFILE:
         case FTYPE_CONSOLE:
             fini_consfront(files[fd].dev);
-            files[fd].type = FTYPE_NONE;
-            return 0;
+            break;
 #endif
 	case FTYPE_NONE:
-	    break;
+            goto error;
     }
+
+    memset(files + fd, 0, sizeof(struct file));
+    BUILD_BUG_ON(FTYPE_NONE != 0);
+
+    return res;
+
+ error:
     printk("close(%d): Bad descriptor\n", fd);
     errno = EBADF;
     return -1;
