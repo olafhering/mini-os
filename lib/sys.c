@@ -344,11 +344,6 @@ int read(int fd, void *buf, size_t nbytes)
 	    return ret * sizeof(union xenfb_in_event);
         }
 #endif
-#ifdef CONFIG_BLKFRONT
-        case FTYPE_BLK: {
-	    return blkfront_posix_read(fd, buf, nbytes);
-        }
-#endif
 	default:
 	    break;
     }
@@ -392,10 +387,6 @@ int write(int fd, const void *buf, size_t nbytes)
 	case FTYPE_TAP:
 	    netfront_xmit(files[fd].dev, (void*) buf, nbytes);
 	    return nbytes;
-#endif
-#ifdef CONFIG_BLKFRONT
-	case FTYPE_BLK:
-	    return blkfront_posix_write(fd, buf, nbytes);
 #endif
 	default:
 	    break;
@@ -455,10 +446,6 @@ off_t lseek(int fd, off_t offset, int whence)
         return ops->lseek(file, offset, whence);
 
     switch(file->type) {
-#ifdef CONFIG_BLKFRONT
-       case FTYPE_BLK:
-          break;
-#endif
        case FTYPE_FILE:
           break;
        default:
@@ -503,11 +490,6 @@ int close(int fd)
 #ifdef CONFIG_NETFRONT
 	case FTYPE_TAP:
 	    shutdown_netfront(files[fd].dev);
-            break;
-#endif
-#ifdef CONFIG_BLKFRONT
-	case FTYPE_BLK:
-            shutdown_blkfront(files[fd].dev);
             break;
 #endif
 #ifdef CONFIG_KBDFRONT
@@ -591,10 +573,6 @@ int fstat(int fd, struct stat *buf)
 	    buf->st_ctime = time(NULL);
 	    return 0;
 	}
-#ifdef CONFIG_BLKFRONT
-	case FTYPE_BLK:
-	   return blkfront_posix_fstat(fd, buf);
-#endif
 	default:
 	    break;
     }
@@ -710,7 +688,6 @@ static const char *const file_types[] = {
     [FTYPE_CONSOLE] = "console",
     [FTYPE_SOCKET]  = "socket",
     [FTYPE_TAP]     = "net",
-    [FTYPE_BLK]     = "blk",
     [FTYPE_KBD]     = "kbd",
     [FTYPE_FB]      = "fb",
 };
@@ -896,7 +873,6 @@ static int select_poll(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exce
 	    FD_CLR(i, exceptfds);
 	    break;
 	case FTYPE_TAP:
-	case FTYPE_BLK:
 	case FTYPE_KBD:
 	case FTYPE_FB:
 	    if (FD_ISSET(i, readfds)) {

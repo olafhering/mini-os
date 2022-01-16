@@ -59,10 +59,10 @@ void blkfront_handler(evtchn_port_t port, struct pt_regs *regs, void *data)
 {
 #ifdef HAVE_LIBC
     struct blkfront_dev *dev = data;
-    int fd = dev->fd;
+    struct file *file = get_file_from_fd(dev->fd);
 
-    if (fd != -1)
-        files[fd].read = true;
+    if ( file )
+        file->read = true;
 #endif
     wake_up(&blkfront_queue);
 }
@@ -483,9 +483,14 @@ int blkfront_aio_poll(struct blkfront_dev *dev)
 
 moretodo:
 #ifdef HAVE_LIBC
-    if (dev->fd != -1) {
-        files[dev->fd].read = false;
-        mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
+    {
+        struct file *file = get_file_from_fd(dev->fd);
+
+        if ( file )
+        {
+            file->read = false;
+            mb(); /* Make sure to let the handler set read to 1 before we start looking at the ring */
+        }
     }
 #endif
 
@@ -554,22 +559,11 @@ moretodo:
 }
 
 #ifdef HAVE_LIBC
-int blkfront_open(struct blkfront_dev *dev)
+static int blkfront_posix_rwop(struct file *file, uint8_t *buf, size_t count,
+                               bool write)
 {
-    /* Silently prevent multiple opens */
-    if(dev->fd != -1) {
-       return dev->fd;
-    }
-    dev->fd = alloc_fd(FTYPE_BLK);
-    printk("blk_open(%s) -> %d\n", dev->nodename, dev->fd);
-    files[dev->fd].dev = dev;
-    return dev->fd;
-}
-
-int blkfront_posix_rwop(int fd, uint8_t* buf, size_t count, int write)
-{
-   struct blkfront_dev* dev = files[fd].dev;
-   off_t offset = files[fd].offset;
+   struct blkfront_dev *dev = file->dev;
+   off_t offset = file->offset;
    struct blkfront_aiocb aiocb;
    unsigned long long disksize = dev->info.sectors * dev->info.sector_size;
    unsigned int blocksize = dev->info.sector_size;
@@ -711,14 +705,24 @@ int blkfront_posix_rwop(int fd, uint8_t* buf, size_t count, int write)
    }
 
    free(copybuf);
-   files[fd].offset += rc;
+   file->offset += rc;
    return rc;
 
 }
 
-int blkfront_posix_fstat(int fd, struct stat* buf)
+static int blkfront_posix_read(struct file *file, void *buf, size_t nbytes)
 {
-   struct blkfront_dev* dev = files[fd].dev;
+    return blkfront_posix_rwop(file, buf, nbytes, false);
+}
+
+static int blkfront_posix_write(struct file *file, const void *buf, size_t nbytes)
+{
+    return blkfront_posix_rwop(file, (void *)buf, nbytes, true);
+}
+
+static int blkfront_posix_fstat(struct file *file, struct stat *buf)
+{
+   struct blkfront_dev *dev = file->dev;
 
    buf->st_mode = dev->info.mode;
    buf->st_uid = 0;
@@ -727,5 +731,46 @@ int blkfront_posix_fstat(int fd, struct stat* buf)
    buf->st_atime = buf->st_mtime = buf->st_ctime = time(NULL);
 
    return 0;
+}
+
+static int blkfront_close_fd(struct file *file)
+{
+    shutdown_blkfront(file->dev);
+
+    return 0;
+}
+
+static const struct file_ops blk_ops = {
+    .name = "blk",
+    .read = blkfront_posix_read,
+    .write = blkfront_posix_write,
+    .lseek = lseek_default,
+    .close = blkfront_close_fd,
+    .fstat = blkfront_posix_fstat,
+    .select_rd = select_read_flag,
+};
+
+static unsigned int ftype_blk;
+
+__attribute__((constructor))
+static void blkfron_initialize(void)
+{
+    ftype_blk = alloc_file_type(&blk_ops);
+}
+
+int blkfront_open(struct blkfront_dev *dev)
+{
+    struct file *file;
+
+    /* Silently prevent multiple opens */
+    if ( dev->fd != -1 )
+        return dev->fd;
+
+    dev->fd = alloc_fd(ftype_blk);
+    printk("blk_open(%s) -> %d\n", dev->nodename, dev->fd);
+    file = get_file_from_fd(dev->fd);
+    file->dev = dev;
+
+    return dev->fd;
 }
 #endif
