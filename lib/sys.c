@@ -99,6 +99,11 @@ static const struct file_ops file_ops_none = {
     .name = "none",
 };
 
+static const struct file_ops file_file_ops = {
+    .name = "file",
+    .lseek = lseek_default,
+};
+
 #ifdef HAVE_LWIP
 static int socket_read(struct file *file, void *buf, size_t nbytes)
 {
@@ -157,6 +162,7 @@ static const struct file_ops *file_ops[FTYPE_N + FTYPE_SPARE] = {
 #ifdef CONFIG_CONSFRONT
     [FTYPE_CONSOLE] = &console_ops,
 #endif
+    [FTYPE_FILE] = &file_file_ops,
 #ifdef HAVE_LWIP
     [FTYPE_SOCKET] = &socket_ops,
 #endif
@@ -415,16 +421,9 @@ off_t lseek(int fd, off_t offset, int whence)
     if ( ops->lseek )
         return ops->lseek(file, offset, whence);
 
-    switch(file->type) {
-       case FTYPE_FILE:
-          break;
-       default:
-          /* Not implemented for this filetype */
-          errno = ESPIPE;
-          return (off_t) -1;
-    }
-
-    return lseek_default(file, offset, whence);
+    /* Not implemented for this filetype */
+    errno = ESPIPE;
+    return (off_t) -1;
 }
 
 int fsync(int fd) {
