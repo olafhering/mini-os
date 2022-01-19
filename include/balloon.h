@@ -50,7 +50,7 @@ static inline int chk_free_pages(unsigned long needed)
 {
     return needed <= nr_free_pages;
 }
-static inline balloon_set_nr_pages(unsigned long pages, unsigned long pfn) { }
+static inline void balloon_set_nr_pages(unsigned long pages, unsigned long pfn) { }
 
 #endif /* CONFIG_BALLOON */
 #endif /* _BALLOON_H_ */
