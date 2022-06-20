@@ -57,6 +57,7 @@ src-y += sched.c
 src-y += shutdown.c
 src-$(CONFIG_TEST) += test.c
 src-$(CONFIG_BALLOON) += balloon.c
+src-$(CONFIG_XENBUS) += xenbus.c
 
 src-y += lib/ctype.c
 src-y += lib/math.c
@@ -66,8 +67,6 @@ src-y += lib/string.c
 src-y += lib/sys.c
 src-y += lib/xmalloc.c
 src-$(CONFIG_LIBXS) += lib/xs.c
-
-src-$(CONFIG_XENBUS) += xenbus/xenbus.c
 
 src-y += console/console.c
 src-y += console/xencons_ring.c
