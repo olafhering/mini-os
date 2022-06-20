@@ -37,6 +37,7 @@ TARGET := mini-os
 SUBDIRS := lib xenbus console
 
 src-$(CONFIG_BLKFRONT) += blkfront.c
+src-$(CONFIG_CONSFRONT) += consfront.c
 src-$(CONFIG_TPMFRONT) += tpmfront.c
 src-$(CONFIG_TPM_TIS) += tpm_tis.c
 src-$(CONFIG_TPMBACK) += tpmback.c
@@ -70,7 +71,6 @@ src-$(CONFIG_LIBXS) += lib/xs.c
 
 src-y += console/console.c
 src-y += console/xencons_ring.c
-src-$(CONFIG_CONSFRONT) += console/xenbus.c
 
 # The common mini-os objects to build.
 APP_OBJS :=
