@@ -5,13 +5,13 @@
 #include <mini-os/events.h>
 #include <mini-os/os.h>
 #include <mini-os/lib.h>
+#include <mini-os/console.h>
 #include <mini-os/xenbus.h>
 #include <xen/io/console.h>
 #include <xen/io/protocols.h>
 #include <xen/io/ring.h>
 #include <mini-os/xmalloc.h>
 #include <mini-os/gnttab.h>
-#include "console.h"
 
 void free_consfront(struct consfront_dev *dev)
 {

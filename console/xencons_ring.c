@@ -5,6 +5,7 @@
 #include <mini-os/events.h>
 #include <mini-os/os.h>
 #include <mini-os/lib.h>
+#include <mini-os/console.h>
 #include <mini-os/xenbus.h>
 #include <xen/io/console.h>
 #include <xen/io/protocols.h>
@@ -12,7 +13,6 @@
 #include <xen/hvm/params.h>
 #include <mini-os/xmalloc.h>
 #include <mini-os/gnttab.h>
-#include "console.h"
 
 DECLARE_WAIT_QUEUE_HEAD(console_queue);
 

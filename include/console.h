@@ -98,5 +98,6 @@ void free_consfront(struct consfront_dev *dev);
 extern const struct file_ops console_ops;
 int open_consfront(char *nodename);
 #endif
+void console_handle_input(evtchn_port_t port, struct pt_regs *regs, void *data);
 
 #endif /* _LIB_CONSOLE_H_ */
