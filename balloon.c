@@ -124,7 +124,7 @@ int balloon_up(unsigned long n_pages)
     for ( pfn = 0; pfn < rc; pfn++ )
     {
         arch_pfn_add(start_pfn + pfn, balloon_frames[pfn]);
-        free_page(pfn_to_virt(nr_mem_pages + pfn));
+        free_page(pfn_to_virt(start_pfn + pfn));
     }
 
     nr_mem_pages += rc;
