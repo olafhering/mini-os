@@ -107,25 +107,20 @@ desc_ptr idt_ptr =
 
 void arch_mm_preinit(void *p)
 {
-    long ret;
-    domid_t domid = DOMID_SELF;
+    unsigned int pages;
     struct hvm_start_info *hsi = p;
 
     if ( hsi->version >= 1 && hsi->memmap_entries > 0 )
         e820_init_memmap((struct hvm_memmap_table_entry *)(unsigned long)
                          hsi->memmap_paddr, hsi->memmap_entries);
+    else
+        e820_init_memmap(NULL, 0);
 
     pt_base = page_table_base;
     first_free_pfn = PFN_UP(to_phys(&_end));
-    ret = HYPERVISOR_memory_op(XENMEM_current_reservation, &domid);
-    if ( ret < 0 )
-    {
-        xprintk("could not get memory size\n");
-        do_exit();
-    }
-
-    last_free_pfn = e820_get_maxpfn(ret);
-    balloon_set_nr_pages(ret, last_free_pfn);
+    pages = e820_get_current_pages();
+    last_free_pfn = e820_get_maxpfn(pages);
+    balloon_set_nr_pages(pages, last_free_pfn);
 }
 #endif
 

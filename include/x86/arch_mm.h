@@ -207,6 +207,8 @@ typedef unsigned long pgentry_t;
 /* to align the pointer to the (next) page boundary */
 #define PAGE_ALIGN(addr)        (((addr)+PAGE_SIZE-1)&PAGE_MASK)
 
+#define LAPIC_ADDRESS	CONST(0xfee00000)
+
 #ifndef __ASSEMBLY__
 /* Definitions for machine and pseudophysical addresses. */
 #ifdef __i386__

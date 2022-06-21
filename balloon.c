@@ -44,20 +44,12 @@ void balloon_set_nr_pages(unsigned long pages, unsigned long pfn)
 
 void get_max_pages(void)
 {
-    long ret;
-    domid_t domid = DOMID_SELF;
-
-    ret = HYPERVISOR_memory_op(XENMEM_maximum_reservation, &domid);
-    if ( ret < 0 )
+    nr_max_pages = e820_get_max_pages();
+    if ( nr_max_pages )
     {
-        printk("Could not get maximum pfn\n");
-        return;
+        printk("Maximum memory size: %ld pages\n", nr_max_pages);
+        nr_max_pfn = e820_get_maxpfn(nr_max_pages);
     }
-
-    nr_max_pages = ret;
-    printk("Maximum memory size: %ld pages\n", nr_max_pages);
-
-    nr_max_pfn = e820_get_maxpfn(nr_max_pages);
 }
 
 void mm_alloc_bitmap_remap(void)

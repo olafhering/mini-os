@@ -29,6 +29,38 @@
 #include <mini-os/e820.h>
 #include <xen/memory.h>
 
+static unsigned long e820_initial_reserved_pfns;
+
+unsigned long e820_get_current_pages(void)
+{
+    domid_t domid = DOMID_SELF;
+    long ret;
+
+    ret = HYPERVISOR_memory_op(XENMEM_current_reservation, &domid);
+    if ( ret < 0 )
+    {
+        xprintk("could not get memory size\n");
+        do_exit();
+    }
+
+    return ret - e820_initial_reserved_pfns;
+}
+
+unsigned long e820_get_max_pages(void)
+{
+    domid_t domid = DOMID_SELF;
+    long ret;
+
+    ret = HYPERVISOR_memory_op(XENMEM_maximum_reservation, &domid);
+    if ( ret < 0 )
+    {
+        printk("Could not get maximum pfn\n");
+        return 0;
+    }
+
+    return ret - e820_initial_reserved_pfns;
+}
+
 #ifdef CONFIG_E820_TRIVIAL
 struct e820entry e820_map[1] = {
     {
@@ -39,10 +71,6 @@ struct e820entry e820_map[1] = {
 };
 
 unsigned e820_entries = 1;
-
-static void e820_get_memmap(void)
-{
-}
 
 #else
 struct e820entry e820_map[E820_MAX];
@@ -199,6 +227,7 @@ static void e820_sanitize(void)
 {
     int i;
     unsigned long end, start;
+    bool found_lapic = false;
 
     /* Sanitize memory map in current form. */
     e820_process_entries();
@@ -238,8 +267,20 @@ static void e820_sanitize(void)
 
     /* Make remaining temporarily reserved entries permanently reserved. */
     for ( i = 0; i < e820_entries; i++ )
+    {
         if ( e820_map[i].type == E820_TMP_RESERVED )
             e820_map[i].type = E820_RESERVED;
+        if ( e820_map[i].type == E820_RESERVED )
+        {
+            e820_initial_reserved_pfns += e820_map[i].size / PAGE_SIZE;
+            if ( e820_map[i].addr <= LAPIC_ADDRESS &&
+                 e820_map[i].addr + e820_map[i].size > LAPIC_ADDRESS )
+                found_lapic = true;
+        }
+    }
+
+    if ( !found_lapic )
+        e820_insert_entry(LAPIC_ADDRESS, PAGE_SIZE, E820_RESERVED);
 }
 
 static void e820_get_memmap(void)
@@ -263,6 +304,12 @@ static void e820_get_memmap(void)
 void e820_init_memmap(struct hvm_memmap_table_entry *entry, unsigned int num)
 {
     unsigned int i;
+
+    if ( !entry )
+    {
+        e820_get_memmap();
+        return;
+    }
 
     BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_RAM != E820_RAM);
     BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_RESERVED != E820_RESERVED);
@@ -364,9 +411,6 @@ unsigned long e820_get_maxpfn(unsigned long pages)
 {
     int i;
     unsigned long pfns = 0, start = 0;
-
-    if ( !e820_entries )
-        e820_get_memmap();
 
     for ( i = 0; i < e820_entries; i++ )
     {
