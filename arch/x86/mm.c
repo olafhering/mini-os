@@ -45,6 +45,7 @@
 #include <mini-os/xmalloc.h>
 #include <mini-os/e820.h>
 #include <xen/memory.h>
+#include <xen/arch-x86/hvm/start_info.h>
 
 #ifdef MM_DEBUG
 #define DEBUG(_f, _a...) \
@@ -108,6 +109,11 @@ void arch_mm_preinit(void *p)
 {
     long ret;
     domid_t domid = DOMID_SELF;
+    struct hvm_start_info *hsi = p;
+
+    if ( hsi->version >= 1 && hsi->memmap_entries > 0 )
+        e820_init_memmap((struct hvm_memmap_table_entry *)(unsigned long)
+                         hsi->memmap_paddr, hsi->memmap_entries);
 
     pt_base = page_table_base;
     first_free_pfn = PFN_UP(to_phys(&_end));

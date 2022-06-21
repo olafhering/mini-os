@@ -26,6 +26,8 @@
 
 #if defined(__arm__) || defined(__aarch64__) || defined(CONFIG_PARAVIRT)
 #define CONFIG_E820_TRIVIAL
+#else
+#include <xen/arch-x86/hvm/start_info.h>
 #endif
 
 /* PC BIOS standard E820 types and structure. */
@@ -34,6 +36,7 @@
 #define E820_ACPI         3
 #define E820_NVS          4
 #define E820_UNUSABLE     5
+#define E820_DISABLED     6
 #define E820_PMEM         7
 #define E820_TYPES        8
 
@@ -54,6 +57,7 @@ unsigned long e820_get_max_contig_pages(unsigned long pfn, unsigned long pages);
 #ifndef CONFIG_E820_TRIVIAL
 unsigned long e820_get_reserved_pfns(int pages);
 void e820_put_reserved_pfns(unsigned long start_pfn, int pages);
+void e820_init_memmap(struct hvm_memmap_table_entry *entry, unsigned int num);
 #endif
 
 #endif /*__E820_HEADER*/

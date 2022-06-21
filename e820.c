@@ -54,6 +54,7 @@ static char *e820_types[E820_TYPES] = {
     [E820_ACPI]     = "ACPI",
     [E820_NVS]      = "NVS",
     [E820_UNUSABLE] = "Unusable",
+    [E820_DISABLED] = "Disabled",
     [E820_PMEM]     = "PMEM"
 };
 
@@ -255,6 +256,30 @@ static void e820_get_memmap(void)
         do_exit();
     }
     e820_entries = memmap.nr_entries;
+
+    e820_sanitize();
+}
+
+void e820_init_memmap(struct hvm_memmap_table_entry *entry, unsigned int num)
+{
+    unsigned int i;
+
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_RAM != E820_RAM);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_RESERVED != E820_RESERVED);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_ACPI != E820_ACPI);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_NVS != E820_NVS);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_UNUSABLE != E820_UNUSABLE);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_DISABLED != E820_DISABLED);
+    BUILD_BUG_ON(XEN_HVM_MEMMAP_TYPE_PMEM != E820_PMEM);
+
+    for ( i = 0; i < num; i++ )
+    {
+        e820_map[i].addr = entry[i].addr;
+        e820_map[i].size = entry[i].size;
+        e820_map[i].type = entry[i].type;
+    }
+
+    e820_entries = num;
 
     e820_sanitize();
 }
