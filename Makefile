@@ -34,7 +34,7 @@ EXTRA_OBJS =
 TARGET := mini-os
 
 # Subdirectories common to mini-os
-SUBDIRS := lib xenbus console
+SUBDIRS := lib
 
 src-$(CONFIG_BLKFRONT) += blkfront.c
 src-$(CONFIG_CONSFRONT) += consfront.c
