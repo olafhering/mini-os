@@ -44,6 +44,7 @@
 #include <fcntl.h>
 #include <xen/features.h>
 #include <xen/version.h>
+#include <xen/io/xs_wire.h>
 
 #ifdef CONFIG_XENBUS
 static unsigned int do_shutdown = 0;
@@ -52,11 +53,114 @@ static DECLARE_WAIT_QUEUE_HEAD(shutdown_queue);
 #endif
 
 #ifdef CONFIG_XENBUS
-void test_xenbus(void);
+/* Send a debug message to xenbus.  Can block. */
+static void xenbus_debug_msg(const char *msg)
+{
+    int len = strlen(msg);
+    struct write_req req[] = {
+        { "print", sizeof("print") },
+        { msg, len },
+        { "", 1 }};
+    struct xsd_sockmsg *reply;
+
+    reply = xenbus_msg_reply(XS_DEBUG, 0, req, ARRAY_SIZE(req));
+    printk("Got a reply, type %d, id %d, len %d.\n",
+           reply->type, reply->req_id, reply->len);
+}
+
+static void do_ls_test(const char *pre)
+{
+    char **dirs, *msg;
+    int x;
+
+    printk("ls %s...\n", pre);
+    msg = xenbus_ls(XBT_NIL, pre, &dirs);
+    if ( msg )
+    {
+        printk("Error in xenbus ls: %s\n", msg);
+        free(msg);
+        return;
+    }
+
+    for ( x = 0; dirs[x]; x++ )
+    {
+        printk("ls %s[%d] -> %s\n", pre, x, dirs[x]);
+        free(dirs[x]);
+    }
+
+    free(dirs);
+}
+
+static void do_read_test(const char *path)
+{
+    char *res, *msg;
+
+    printk("Read %s...\n", path);
+    msg = xenbus_read(XBT_NIL, path, &res);
+    if ( msg )
+    {
+        printk("Error in xenbus read: %s\n", msg);
+        free(msg);
+        return;
+    }
+    printk("Read %s -> %s.\n", path, res);
+    free(res);
+}
+
+static void do_write_test(const char *path, const char *val)
+{
+    char *msg;
+
+    printk("Write %s to %s...\n", val, path);
+    msg = xenbus_write(XBT_NIL, path, val);
+    if ( msg )
+    {
+        printk("Result %s\n", msg);
+        free(msg);
+    }
+    else
+        printk("Success.\n");
+}
+
+static void do_rm_test(const char *path)
+{
+    char *msg;
+
+    printk("rm %s...\n", path);
+    msg = xenbus_rm(XBT_NIL, path);
+    if ( msg )
+    {
+        printk("Result %s\n", msg);
+        free(msg);
+    }
+    else
+        printk("Success.\n");
+}
 
 static void xenbus_tester(void *p)
 {
-    test_xenbus();
+    printk("Doing xenbus test.\n");
+    xenbus_debug_msg("Testing xenbus...\n");
+
+    printk("Doing ls test.\n");
+    do_ls_test("device");
+    do_ls_test("device/vif");
+    do_ls_test("device/vif/0");
+
+    printk("Doing read test.\n");
+    do_read_test("device/vif/0/mac");
+    do_read_test("device/vif/0/backend");
+
+    printk("Doing write test.\n");
+    do_write_test("device/vif/0/flibble", "flobble");
+    do_read_test("device/vif/0/flibble");
+    do_write_test("device/vif/0/flibble", "widget");
+    do_read_test("device/vif/0/flibble");
+
+    printk("Doing rm test.\n");
+    do_rm_test("device/vif/0/flibble");
+    do_read_test("device/vif/0/flibble");
+    printk("(Should have said ENOENT)\n");
 }
 #endif
 
