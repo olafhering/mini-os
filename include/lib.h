@@ -172,6 +172,7 @@ struct file {
     union {
         int fd; /* Any fd from an upper layer. */
         void *dev;
+        void *filedata;
     };
 };
 
@@ -193,6 +194,10 @@ struct mount_point {
                 mode_t mode);
     void *dev;
 };
+
+int mount(const char *path, void *dev,
+          int (*open)(struct mount_point *, const char *, int, mode_t));
+void umount(const char *path);
 
 unsigned int alloc_file_type(const struct file_ops *ops);
 

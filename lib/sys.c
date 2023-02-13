@@ -85,6 +85,8 @@
     }
 
 #define NOFILE 32
+#define N_MOUNTS  16
+
 extern void minios_evtchn_close_fd(int fd);
 extern void minios_gnttab_close_fd(int fd);
 
@@ -339,7 +341,7 @@ static int open_mem(struct mount_point *mnt, const char *pathname, int flags,
     return fd;
 }
 
-static struct mount_point mount_points[] = {
+static struct mount_point mount_points[N_MOUNTS] = {
     { .path = "/var/log",     .open = open_log,  .dev = NULL },
     { .path = "/dev/mem",     .open = open_mem,  .dev = NULL },
 #ifdef CONFIG_CONSFRONT
@@ -365,6 +367,8 @@ int open(const char *pathname, int flags, ...)
     for ( m = 0; m < ARRAY_SIZE(mount_points); m++ )
     {
         mnt = mount_points + m;
+        if ( !mnt->path )
+            continue;
         mlen = strlen(mnt->path);
         if ( !strncmp(pathname, mnt->path, mlen) &&
              (pathname[mlen] == '/' || pathname[mlen] == 0) )
@@ -373,6 +377,45 @@ int open(const char *pathname, int flags, ...)
 
     errno = EIO;
     return -1;
+}
+
+int mount(const char *path, void *dev,
+          int (*open)(struct mount_point *, const char *, int, mode_t))
+{
+    unsigned int m;
+    struct mount_point *mnt;
+
+    for ( m = 0; m < ARRAY_SIZE(mount_points); m++ )
+    {
+        mnt = mount_points + m;
+        if ( !mnt->path )
+        {
+            mnt->path = strdup(path);
+            mnt->open = open;
+            mnt->dev = dev;
+            return 0;
+        }
+    }
+
+    errno = ENOSPC;
+    return -1;
+}
+
+void umount(const char *path)
+{
+    unsigned int m;
+    struct mount_point *mnt;
+
+    for ( m = 0; m < ARRAY_SIZE(mount_points); m++ )
+    {
+        mnt = mount_points + m;
+        if ( mnt->path && !strcmp(mnt->path, path) )
+        {
+            free((char *)mnt->path);
+            mnt->path = NULL;
+            return;
+        }
+    }
 }
 
 int isatty(int fd)
