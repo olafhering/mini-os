@@ -187,6 +187,13 @@ struct file_ops {
     bool (*select_wr)(struct file *file);
 };
 
+struct mount_point {
+    const char *path;
+    int (*open)(struct mount_point *mnt, const char *pathname, int flags,
+                mode_t mode);
+    void *dev;
+};
+
 unsigned int alloc_file_type(const struct file_ops *ops);
 
 off_t lseek_default(struct file *file, off_t offset, int whence);
@@ -198,6 +205,8 @@ int alloc_fd(unsigned int type);
 void close_all_files(void);
 extern struct thread *main_thread;
 void sparse(unsigned long data, size_t size);
+
+int close(int fd);
 #endif
 
 #endif /* _LIB_H_ */

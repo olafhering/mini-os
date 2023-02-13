@@ -263,11 +263,6 @@ char *getcwd(char *buf, size_t size)
     return buf;
 }
 
-#define LOG_PATH "/var/log/"
-#define SAVE_PATH "/var/lib/xen"
-#define SAVE_CONSOLE 1
-#define RESTORE_CONSOLE 2
-
 int mkdir(const char *pathname, mode_t mode)
 {
     errno = EIO;
@@ -286,17 +281,29 @@ int posix_openpt(int flags)
     return fd;
 }
 
+static int open_pt(struct mount_point *mnt, const char *pathname, int flags,
+                   mode_t mode)
+{
+    return posix_openpt(flags);
+}
+
 int open_savefile(const char *path, int save)
 {
     int fd;
     char nodename[64];
 
-    snprintf(nodename, sizeof(nodename), "device/console/%d", save ? SAVE_CONSOLE : RESTORE_CONSOLE);
+    snprintf(nodename, sizeof(nodename), "device/console/%d", save ? 1 : 2);
 
     fd = open_consfront(nodename);
     printk("fd(%d) = open_savefile\n", fd);
 
     return fd;
+}
+
+static int open_save(struct mount_point *mnt, const char *pathname, int flags,
+                     mode_t mode)
+{
+    return open_savefile(pathname, flags & O_WRONLY);
 }
 #else
 int posix_openpt(int flags)
@@ -311,24 +318,59 @@ int open_savefile(const char *path, int save)
 }
 #endif
 
-int open(const char *pathname, int flags, ...)
+static int open_log(struct mount_point *mnt, const char *pathname, int flags,
+                    mode_t mode)
 {
     int fd;
+
     /* Ugly, but fine.  */
-    if (!strncmp(pathname,LOG_PATH,strlen(LOG_PATH))) {
-	fd = alloc_fd(FTYPE_CONSOLE);
-        printk("open(%s) -> %d\n", pathname, fd);
-        return fd;
+    fd = alloc_fd(FTYPE_CONSOLE);
+    printk("open(%s%s) -> %d\n", mnt->path, pathname, fd);
+    return fd;
+}
+
+static int open_mem(struct mount_point *mnt, const char *pathname, int flags,
+                    mode_t mode)
+{
+    int fd;
+
+    fd = alloc_fd(FTYPE_MEM);
+    printk("open(%s%s) -> %d\n", mnt->path, pathname, fd);
+    return fd;
+}
+
+static struct mount_point mount_points[] = {
+    { .path = "/var/log",     .open = open_log,  .dev = NULL },
+    { .path = "/dev/mem",     .open = open_mem,  .dev = NULL },
+#ifdef CONFIG_CONSFRONT
+    { .path = "/dev/ptmx",    .open = open_pt,   .dev = NULL },
+    { .path = "/var/lib/xen", .open = open_save, .dev = NULL },
+#endif
+};
+
+int open(const char *pathname, int flags, ...)
+{
+    unsigned int m, mlen;
+    struct mount_point *mnt;
+    mode_t mode = 0;
+    va_list ap;
+
+    if ( flags & O_CREAT )
+    {
+        va_start(ap, flags);
+        mode = va_arg(ap, mode_t);
+        va_end(ap);
     }
-    if (!strncmp(pathname, "/dev/mem", strlen("/dev/mem"))) {
-        fd = alloc_fd(FTYPE_MEM);
-        printk("open(/dev/mem) -> %d\n", fd);
-        return fd;
+
+    for ( m = 0; m < ARRAY_SIZE(mount_points); m++ )
+    {
+        mnt = mount_points + m;
+        mlen = strlen(mnt->path);
+        if ( !strncmp(pathname, mnt->path, mlen) &&
+             (pathname[mlen] == '/' || pathname[mlen] == 0) )
+            return mnt->open(mnt, pathname + mlen, flags, mode);
     }
-    if (!strncmp(pathname, "/dev/ptmx", strlen("/dev/ptmx")))
-        return posix_openpt(flags);
-    if (!strncmp(pathname,SAVE_PATH,strlen(SAVE_PATH)))
-        return open_savefile(pathname, flags & O_WRONLY);
+
     errno = EIO;
     return -1;
 }
