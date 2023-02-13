@@ -39,6 +39,7 @@ SUBDIRS := lib
 src-$(CONFIG_BLKFRONT) += blkfront.c
 src-$(CONFIG_CONSFRONT) += consfront.c
 src-$(CONFIG_TPMFRONT) += tpmfront.c
+src-$(CONFIG_9PFRONT) += 9pfront.c
 src-$(CONFIG_TPM_TIS) += tpm_tis.c
 src-$(CONFIG_TPMBACK) += tpmback.c
 src-y += console.c
