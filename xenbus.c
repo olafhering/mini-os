@@ -936,16 +936,21 @@ int xenbus_read_uuid(const char *path, unsigned char uuid[16])
     return 1;
 }
 
+#define BUFFER_SIZE 256
+static void xenbus_build_path(const char *dir, const char *node, char *res)
+{
+    BUG_ON(strlen(dir) + strlen(node) + 1 >= BUFFER_SIZE);
+    sprintf(res,"%s/%s", dir, node);
+}
+
 char *xenbus_printf(xenbus_transaction_t xbt, const char* node,
                     const char* path, const char* fmt, ...)
 {
-#define BUFFER_SIZE 256
     char fullpath[BUFFER_SIZE];
     char val[BUFFER_SIZE];
     va_list args;
 
-    BUG_ON(strlen(node) + strlen(path) + 1 >= BUFFER_SIZE);
-    sprintf(fullpath,"%s/%s", node, path);
+    xenbus_build_path(node, path, fullpath);
     va_start(args, fmt);
     vsprintf(val, fmt, args);
     va_end(args);
@@ -962,6 +967,35 @@ domid_t xenbus_get_self_id(void)
     sscanf(dom_id, "%"SCNd16, &ret);
 
     return ret;
+}
+
+char *xenbus_read_string(xenbus_transaction_t xbt, const char *dir,
+                         const char *node, char **value)
+{
+    char path[BUFFER_SIZE];
+
+    xenbus_build_path(dir, node, path);
+
+    return xenbus_read(xbt, path, value);
+}
+
+char *xenbus_read_unsigned(xenbus_transaction_t xbt, const char *dir,
+                           const char *node, unsigned int *value)
+{
+    char path[BUFFER_SIZE];
+    char *msg;
+    char *str;
+
+    xenbus_build_path(dir, node, path);
+    msg = xenbus_read(xbt, path, &str);
+    if ( msg )
+        return msg;
+
+    if ( sscanf(str, "%u", value) != 1 )
+        msg = strdup("EINVAL");
+    free(str);
+
+    return msg;
 }
 
 /*

@@ -108,6 +108,12 @@ int xenbus_read_integer(const char *path);
  * read and parsing were successful, 0 if not */
 int xenbus_read_uuid(const char* path, unsigned char uuid[16]);
 
+/* Support functions for reading values from directory/node tuple. */
+char *xenbus_read_string(xenbus_transaction_t xbt, const char *dir,
+                         const char *node, char **value);
+char *xenbus_read_unsigned(xenbus_transaction_t xbt, const char *dir,
+                           const char *node, unsigned int *value);
+
 /* Contraction of snprintf and xenbus_write(path/node). */
 char* xenbus_printf(xenbus_transaction_t xbt,
                                   const char* node, const char* path,
