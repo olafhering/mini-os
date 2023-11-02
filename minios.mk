@@ -28,6 +28,10 @@ endif
 # Make the headers define our internal stuff
 DEF_CFLAGS += -D__INSIDE_MINIOS__
 
+# Arrange for assembly files to have a proper .note.GNU-stack section added,
+# to silence warnings otherwise issued by GNU ld 2.39 and newer.
+DEF_ASFLAGS += $(call cc-option,$(CC),-Wa$(comma)--noexecstack)
+
 # Build the CFLAGS and ASFLAGS for compiling and assembling.
 # DEF_... flags are the common mini-os flags,
 # ARCH_... flags may be defined in arch/$(TARGET_ARCH_FAM/rules.mk

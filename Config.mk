@@ -1,4 +1,6 @@
-#
+# Convenient variables
+comma := ,
+
 # Compare $(1) and $(2) and replace $(2) with $(1) if they differ
 #
 # Typically $(1) is a newly generated file and $(2) is the target file
@@ -20,7 +22,7 @@ endef
 #
 # Usage: cflags-y += $(call cc-option,$(CC),-march=winchip-c6,-march=i586)
 cc-option = $(shell if test -z "`echo 'void*p=1;' | \
-              $(1) $(2) -S -o /dev/null -x c - 2>&1 | grep -- $(2) -`"; \
+              $(1) $(2) -c -o /dev/null -x c - 2>&1 | grep -- $(2) -`"; \
               then echo "$(2)"; else echo "$(3)"; fi ;)
 
 ifneq ($(MINIOS_CONFIG),)
