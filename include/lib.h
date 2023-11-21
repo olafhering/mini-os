@@ -154,6 +154,9 @@ do {                                                           \
 /* Consistency check as much as possible. */
 void sanity_check(void);
 
+/* Get own domid. */
+domid_t get_domid(void);
+
 #ifdef HAVE_LIBC
 extern struct wait_queue_head event_queue;
 

@@ -261,6 +261,39 @@ int evtchn_get_peercontext(evtchn_port_t local_port, char *ctx, int size)
     return rc;
 }
 
+/* Replace below when a hypercall is available to get the domid. */
+domid_t get_domid(void)
+{
+    int rc;
+    domid_t domid = DOMID_INVALID;
+    evtchn_alloc_unbound_t op;
+    struct evtchn_status status;
+    struct evtchn_close close;
+
+    op.dom = DOMID_SELF;
+    op.remote_dom = DOMID_SELF;
+    rc = HYPERVISOR_event_channel_op(EVTCHNOP_alloc_unbound, &op);
+    if ( rc )
+    {
+        printk("ERROR: alloc_unbound failed with rc=%d", rc);
+        return domid;
+    }
+
+    status.dom = DOMID_SELF;
+    status.port = op.port;
+    rc = HYPERVISOR_event_channel_op(EVTCHNOP_status, &status);
+    if ( rc )
+        printk("ERROR: EVTCHNOP_status failed with rc=%d", rc);
+    else
+        domid = status.u.unbound.dom;
+
+    close.port = op.port;
+    rc = HYPERVISOR_event_channel_op(EVTCHNOP_close, &close);
+    if ( rc )
+        printk("WARN: close_port %d failed rc=%d. ignored\n", close.port, rc);
+
+    return domid;
+}
 
 /*
  * Local variables:
