@@ -75,7 +75,9 @@ static void shutdown_thread(void *p)
         xenbus_wait_for_watch(&events);
         if ((err = xenbus_read(XBT_NIL, path, &shutdown))) {
             free(err);
-            do_exit();
+            free(xenbus_unwatch_path_token(XBT_NIL, path, token));
+            printk("Shutdown Xenstore node not available.\n");
+            return;
         }
 
         if (end_shutdown_thread)
@@ -117,15 +119,9 @@ void init_shutdown(void)
 
 void fini_shutdown(void)
 {
-    char *err;
-
     end_shutdown_thread = 1;
     xenbus_release_wait_for_watch(&events);
-    err = xenbus_unwatch_path_token(XBT_NIL, path, token);
-    if (err) {
-        free(err);
-        do_exit();
-    }
+    free(xenbus_unwatch_path_token(XBT_NIL, path, token));
 }
 #endif
 
