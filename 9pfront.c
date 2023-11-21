@@ -386,7 +386,9 @@ static void copy_bufs(unsigned char **buf1, unsigned char **buf2,
             printk("9pfs: short copy (dropping %u bytes)\n", len - *len1);
             len = *len1;
         }
-        memcpy(target, *buf1, *len1);
+        memcpy(target, *buf1, len);
+        *buf1 += len;
+        *len1 -= len;
     }
 }
 
