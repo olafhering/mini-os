@@ -8,12 +8,14 @@ typedef unsigned long xenbus_transaction_t;
 
 #ifdef CONFIG_XENBUS
 extern uint32_t xenbus_evtchn;
+extern struct xenstore_domain_interface *xenstore_buf;
 
 /* Initialize the XenBus system. */
 void init_xenbus(void);
 void get_xenbus(void *p);
 #else
 #define xenbus_evtchn ~0
+#define xenstore_buf NULL
 
 static inline void init_xenbus(void)
 {

@@ -44,7 +44,7 @@
 #define DEBUG(_f, _a...)    ((void)0)
 #endif
 
-static struct xenstore_domain_interface *xenstore_buf;
+struct xenstore_domain_interface *xenstore_buf;
 static DECLARE_WAIT_QUEUE_HEAD(xb_waitq);
 DECLARE_WAIT_QUEUE_HEAD(xenbus_watch_queue);
 static __DECLARE_SEMAPHORE_GENERIC(xb_write_sem, 1);
