@@ -711,6 +711,7 @@ static int p9_create(struct dev_9pfs *dev, uint32_t fid, char *path,
 static int p9_stat(struct dev_9pfs *dev, uint32_t fid, struct p9_stat *stat)
 {
     struct req *req = get_free_req(dev);
+    uint16_t total;
     int ret;
 
     if ( !req )
@@ -719,10 +720,10 @@ static int p9_stat(struct dev_9pfs *dev, uint32_t fid, struct p9_stat *stat)
     memset(stat, 0, sizeof(*stat));
     req->cmd = P9_CMD_STAT;
     send_9p(dev, req, "U", fid);
-    rcv_9p(dev, req, "uuUQUUULSSSSSUUU", &stat->size, &stat->type, &stat->dev,
-           stat->qid, &stat->mode, &stat->atime, &stat->mtime, &stat->length,
-           &stat->name, &stat->uid, &stat->gid, &stat->muid, &stat->extension,
-           &stat->n_uid, &stat->n_gid, &stat->n_muid);
+    rcv_9p(dev, req, "uuuUQUUULSSSSSUUU", &total, &stat->size, &stat->type,
+           &stat->dev, stat->qid, &stat->mode, &stat->atime, &stat->mtime,
+           &stat->length, &stat->name, &stat->uid, &stat->gid, &stat->muid,
+           &stat->extension, &stat->n_uid, &stat->n_gid, &stat->n_muid);
 
     ret = req->result;
 
