@@ -106,6 +106,7 @@ gntmap_set_max_grants(struct gntmap *map, int count)
     map->nentries = count;
     return 0;
 }
+EXPORT_SYMBOL(gntmap_set_max_grants);
 
 static int
 _gntmap_unmap_grant_ref(struct gntmap *map, int idx)
@@ -209,6 +210,7 @@ gntmap_munmap(struct gntmap *map, unsigned long start_address, int count)
 
     return 0;
 }
+EXPORT_SYMBOL(gntmap_munmap);
 
 void*
 gntmap_map_grant_refs(struct gntmap *map, 
@@ -251,6 +253,7 @@ gntmap_map_grant_refs(struct gntmap *map,
 
     return (void*) addr;
 }
+EXPORT_SYMBOL(gntmap_map_grant_refs);
 
 void
 gntmap_init(struct gntmap *map)
@@ -259,6 +262,7 @@ gntmap_init(struct gntmap *map)
     map->nentries = 0;
     map->entries = NULL;
 }
+EXPORT_SYMBOL(gntmap_init);
 
 void
 gntmap_fini(struct gntmap *map)
@@ -281,3 +285,4 @@ gntmap_fini(struct gntmap *map)
     map->entries = NULL;
     map->nentries = 0;
 }
+EXPORT_SYMBOL(gntmap_fini);
