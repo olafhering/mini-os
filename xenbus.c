@@ -123,6 +123,7 @@ char **xenbus_wait_for_watch_return(xenbus_event_queue *queue)
 
     return &event->path;
 }
+EXPORT_SYMBOL(xenbus_wait_for_watch_return);
 
 void xenbus_wait_for_watch(xenbus_event_queue *queue)
 {
@@ -136,6 +137,7 @@ void xenbus_wait_for_watch(xenbus_event_queue *queue)
     else
         printk("unexpected path returned by watch\n");
 }
+EXPORT_SYMBOL(xenbus_wait_for_watch);
 
 void xenbus_release_wait_for_watch(xenbus_event_queue *queue)
 {
@@ -145,6 +147,7 @@ void xenbus_release_wait_for_watch(xenbus_event_queue *queue)
     *queue = event;
     wake_up(&xenbus_watch_queue);
 }
+EXPORT_SYMBOL(xenbus_release_wait_for_watch);
 
 char *xenbus_wait_for_value(const char *path, const char *value,
                             xenbus_event_queue *queue)
@@ -170,6 +173,7 @@ char *xenbus_wait_for_value(const char *path, const char *value,
         xenbus_wait_for_watch(queue);
     }
 }
+EXPORT_SYMBOL(xenbus_wait_for_value);
 
 char *xenbus_switch_state(xenbus_transaction_t xbt, const char *path,
                           XenbusState state)
@@ -220,6 +224,7 @@ exit:
 
     return msg;
 }
+EXPORT_SYMBOL(xenbus_switch_state);
 
 char *xenbus_wait_for_state_change(const char *path, XenbusState *state,
                                    xenbus_event_queue *queue)
@@ -249,6 +254,7 @@ char *xenbus_wait_for_state_change(const char *path, XenbusState *state,
     }
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_wait_for_state_change);
 
 static void xenbus_read_data(char *buf, unsigned int len)
 {
@@ -602,6 +608,7 @@ struct xsd_sockmsg *xenbus_msg_reply(int type, xenbus_transaction_t trans,
 
     return rep;
 }
+EXPORT_SYMBOL(xenbus_msg_reply);
 
 static char *errmsg(struct xsd_sockmsg *rep)
 {
@@ -664,6 +671,7 @@ char *xenbus_ls(xenbus_transaction_t xbt, const char *pre, char ***contents)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_ls);
 
 char *xenbus_read(xenbus_transaction_t xbt, const char *path, char **value)
 {
@@ -687,6 +695,7 @@ char *xenbus_read(xenbus_transaction_t xbt, const char *path, char **value)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_read);
 
 char *xenbus_write(xenbus_transaction_t xbt, const char *path,
                    const char *value)
@@ -707,6 +716,7 @@ char *xenbus_write(xenbus_transaction_t xbt, const char *path,
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_write);
 
 char* xenbus_watch_path_token(xenbus_transaction_t xbt, const char *path,
                               const char *token, xenbus_event_queue *events)
@@ -738,6 +748,7 @@ char* xenbus_watch_path_token(xenbus_transaction_t xbt, const char *path,
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_watch_path_token);
 
 char* xenbus_unwatch_path_token(xenbus_transaction_t xbt, const char *path,
                                 const char *token)
@@ -771,6 +782,7 @@ char* xenbus_unwatch_path_token(xenbus_transaction_t xbt, const char *path,
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_unwatch_path_token);
 
 char *xenbus_rm(xenbus_transaction_t xbt, const char *path)
 {
@@ -787,6 +799,7 @@ char *xenbus_rm(xenbus_transaction_t xbt, const char *path)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_rm);
 
 char *xenbus_get_perms(xenbus_transaction_t xbt, const char *path, char **value)
 {
@@ -810,6 +823,7 @@ char *xenbus_get_perms(xenbus_transaction_t xbt, const char *path, char **value)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_get_perms);
 
 #define PERM_MAX_SIZE 32
 char *xenbus_set_perms(xenbus_transaction_t xbt, const char *path, domid_t dom,
@@ -834,6 +848,7 @@ char *xenbus_set_perms(xenbus_transaction_t xbt, const char *path, domid_t dom,
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_set_perms);
 
 char *xenbus_transaction_start(xenbus_transaction_t *xbt)
 {
@@ -855,6 +870,7 @@ char *xenbus_transaction_start(xenbus_transaction_t *xbt)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_transaction_start);
 
 char *xenbus_transaction_end(xenbus_transaction_t t, int abort, int *retry)
 {
@@ -883,6 +899,7 @@ char *xenbus_transaction_end(xenbus_transaction_t t, int abort, int *retry)
 
     return NULL;
 }
+EXPORT_SYMBOL(xenbus_transaction_end);
 
 int xenbus_read_integer(const char *path)
 {
@@ -902,6 +919,7 @@ int xenbus_read_integer(const char *path)
 
     return t;
 }
+EXPORT_SYMBOL(xenbus_read_integer);
 
 int xenbus_read_uuid(const char *path, unsigned char uuid[16])
 {
@@ -935,6 +953,7 @@ int xenbus_read_uuid(const char *path, unsigned char uuid[16])
 
     return 1;
 }
+EXPORT_SYMBOL(xenbus_read_uuid);
 
 #define BUFFER_SIZE 256
 static void xenbus_build_path(const char *dir, const char *node, char *res)
@@ -957,6 +976,7 @@ char *xenbus_printf(xenbus_transaction_t xbt, const char* node,
 
     return xenbus_write(xbt,fullpath,val);
 }
+EXPORT_SYMBOL(xenbus_printf);
 
 domid_t xenbus_get_self_id(void)
 {
@@ -968,6 +988,7 @@ domid_t xenbus_get_self_id(void)
 
     return ret;
 }
+EXPORT_SYMBOL(xenbus_get_self_id);
 
 char *xenbus_read_string(xenbus_transaction_t xbt, const char *dir,
                          const char *node, char **value)
@@ -978,6 +999,7 @@ char *xenbus_read_string(xenbus_transaction_t xbt, const char *dir,
 
     return xenbus_read(xbt, path, value);
 }
+EXPORT_SYMBOL(xenbus_read_string);
 
 char *xenbus_read_unsigned(xenbus_transaction_t xbt, const char *dir,
                            const char *node, unsigned int *value)
@@ -997,6 +1019,7 @@ char *xenbus_read_unsigned(xenbus_transaction_t xbt, const char *dir,
 
     return msg;
 }
+EXPORT_SYMBOL(xenbus_read_unsigned);
 
 /*
  * Local variables:
