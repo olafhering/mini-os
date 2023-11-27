@@ -1243,6 +1243,7 @@ void *init_9pfront(unsigned int id, const char *mnt)
     free(msg);
     return NULL;
 }
+EXPORT_SYMBOL(init_9pfront);
 
 void shutdown_9pfront(void *dev)
 {
@@ -1286,6 +1287,7 @@ void shutdown_9pfront(void *dev)
         printk("9pfsfront shutdown %u failed, %s\n", dev9p->id, reason);
     free(msg);
 }
+EXPORT_SYMBOL(shutdown_9pfront);
 
 static const struct file_ops ops_9pfs = {
     .name = "9pfs",
