@@ -338,6 +338,8 @@ error:
    shutdown_tpmfront(dev);
    return NULL;
 }
+EXPORT_SYMBOL(init_tpmfront);
+
 void shutdown_tpmfront(struct tpmfront_dev* dev)
 {
    char* err;
@@ -402,6 +404,7 @@ void shutdown_tpmfront(struct tpmfront_dev* dev)
    }
    free(dev);
 }
+EXPORT_SYMBOL(shutdown_tpmfront);
 
 int tpmfront_send(struct tpmfront_dev* dev, const uint8_t* msg, size_t length)
 {
@@ -528,6 +531,7 @@ int tpmfront_cmd(struct tpmfront_dev* dev, uint8_t* req, size_t reqlen, uint8_t*
 
    return 0;
 }
+EXPORT_SYMBOL(tpmfront_cmd);
 
 int tpmfront_set_locality(struct tpmfront_dev* dev, int locality)
 {
@@ -536,6 +540,7 @@ int tpmfront_set_locality(struct tpmfront_dev* dev, int locality)
    dev->page->locality = locality;
    return 0;
 }
+EXPORT_SYMBOL(tpmfront_set_locality);
 
 #ifdef HAVE_LIBC
 #include <errno.h>
@@ -663,5 +668,6 @@ int tpmfront_open(struct tpmfront_dev *dev)
 
     return dev->fd;
 }
+EXPORT_SYMBOL(tpmfront_open);
 
 #endif
