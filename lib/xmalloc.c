@@ -271,6 +271,7 @@ void *malloc(size_t size)
 {
     return _xmalloc(size, DEFAULT_ALIGN);
 }
+EXPORT_SYMBOL(malloc);
 
 void *realloc(void *ptr, size_t size)
 {
@@ -301,11 +302,13 @@ void *realloc(void *ptr, size_t size)
 
     return new;
 }
+EXPORT_SYMBOL(realloc);
 
 void free(void *ptr)
 {
     xfree(ptr);
 }
+EXPORT_SYMBOL(free);
 #endif
 
 /*
