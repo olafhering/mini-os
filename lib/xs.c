@@ -64,6 +64,7 @@ struct xs_handle *xs_daemon_open()
     printk("xs_daemon_open -> %d, %p\n", fd, &file->dev);
     return (void*)(intptr_t) fd;
 }
+EXPORT_SYMBOL(xs_daemon_open);
 
 void xs_daemon_close(struct xs_handle *h)
 {
@@ -74,6 +75,7 @@ int xs_fileno(struct xs_handle *h)
 {
     return _xs_fileno(h);
 }
+EXPORT_SYMBOL(xs_fileno);
 
 void *xs_read(struct xs_handle *h, xs_transaction_t t,
 	     const char *path, unsigned int *len)
@@ -92,6 +94,7 @@ void *xs_read(struct xs_handle *h, xs_transaction_t t,
 	*len = strlen(value);
     return value;
 }
+EXPORT_SYMBOL(xs_read);
 
 bool xs_write(struct xs_handle *h, xs_transaction_t t,
 	      const char *path, const void *data, unsigned int len)
@@ -110,6 +113,7 @@ bool xs_write(struct xs_handle *h, xs_transaction_t t,
     }
     return true;
 }
+EXPORT_SYMBOL(xs_write);
 
 static bool xs_bool(char *reply)
 {
@@ -123,6 +127,7 @@ bool xs_rm(struct xs_handle *h, xs_transaction_t t, const char *path)
 {
     return xs_bool(xenbus_rm(t, path));
 }
+EXPORT_SYMBOL(xs_rm);
 
 static void *xs_talkv(struct xs_handle *h, xs_transaction_t t,
 		enum xsd_sockmsg_type type,
@@ -163,6 +168,7 @@ char *xs_get_domain_path(struct xs_handle *h, unsigned int domid)
 
     return xs_single(h, XBT_NULL, XS_GET_DOMAIN_PATH, domid_str, NULL);
 }
+EXPORT_SYMBOL(xs_get_domain_path);
 
 char **xs_directory(struct xs_handle *h, xs_transaction_t t,
 		    const char *path, unsigned int *num)
@@ -199,6 +205,7 @@ char **xs_directory(struct xs_handle *h, xs_transaction_t t,
     free(res);
     return entries;
 }
+EXPORT_SYMBOL(xs_directory);
 
 bool xs_watch(struct xs_handle *h, const char *path, const char *token)
 {
@@ -208,6 +215,7 @@ bool xs_watch(struct xs_handle *h, const char *path, const char *token)
     return xs_bool(xenbus_watch_path_token(XBT_NULL, path, token,
                                            (xenbus_event_queue *)&file->dev));
 }
+EXPORT_SYMBOL(xs_watch);
 
 char **xs_read_watch(struct xs_handle *h, unsigned int *num)
 {
@@ -220,10 +228,12 @@ char **xs_read_watch(struct xs_handle *h, unsigned int *num)
     *num = 2;
     return (char **) &event->path;
 }
+EXPORT_SYMBOL(xs_read_watch);
 
 bool xs_unwatch(struct xs_handle *h, const char *path, const char *token)
 {
     printk("xs_unwatch(%s, %s)\n", path, token);
     return xs_bool(xenbus_unwatch_path_token(XBT_NULL, path, token));
 }
+EXPORT_SYMBOL(xs_unwatch);
 #endif
