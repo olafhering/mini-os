@@ -119,6 +119,7 @@ void unbind_evtchn(evtchn_port_t port )
     if ( rc )
         printk("WARN: close_port %d failed rc=%d. ignored\n", port, rc);
 }
+EXPORT_SYMBOL(unbind_evtchn);
 
 evtchn_port_t bind_virq(uint32_t virq, evtchn_handler_t handler, void *data)
 {
@@ -138,6 +139,7 @@ evtchn_port_t bind_virq(uint32_t virq, evtchn_handler_t handler, void *data)
     bind_evtchn(op.port, handler, data);
 	return op.port;
 }
+EXPORT_SYMBOL(bind_virq);
 
 evtchn_port_t bind_pirq(uint32_t pirq, int will_share,
                         evtchn_handler_t handler, void *data)
@@ -157,6 +159,7 @@ evtchn_port_t bind_pirq(uint32_t pirq, int will_share,
 	bind_evtchn(op.port, handler, data);
 	return op.port;
 }
+EXPORT_SYMBOL(bind_pirq);
 
 /*
  * Initially all events are without a handler and disabled
@@ -217,6 +220,7 @@ int evtchn_alloc_unbound(domid_t pal, evtchn_handler_t handler,
     *port = bind_evtchn(op.port, handler, data);
     return rc;
 }
+EXPORT_SYMBOL(evtchn_alloc_unbound);
 
 /* Connect to a port so as to allow the exchange of notifications with
    the pal. Returns the result of the hypervisor call. */
@@ -240,6 +244,7 @@ int evtchn_bind_interdomain(domid_t pal, evtchn_port_t remote_port,
     *local_port = bind_evtchn(port, handler, data);
     return rc;
 }
+EXPORT_SYMBOL(evtchn_bind_interdomain);
 
 int evtchn_get_peercontext(evtchn_port_t local_port, char *ctx, int size)
 {
@@ -260,6 +265,7 @@ int evtchn_get_peercontext(evtchn_port_t local_port, char *ctx, int size)
     rc = HYPERVISOR_xsm_op(&op);
     return rc;
 }
+EXPORT_SYMBOL(evtchn_get_peercontext);
 
 /* Replace below when a hypercall is available to get the domid. */
 domid_t get_domid(void)
@@ -294,6 +300,7 @@ domid_t get_domid(void)
 
     return domid;
 }
+EXPORT_SYMBOL(get_domid);
 
 /*
  * Local variables:
