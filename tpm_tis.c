@@ -673,6 +673,7 @@ int tpm_tis_request_locality(struct tpm_chip* tpm, int l) {
    printk("REQ LOCALITY FAILURE\n");
    return -1;
 }
+EXPORT_SYMBOL(tpm_tis_request_locality);
 
 static uint8_t tpm_tis_status(struct tpm_chip* tpm) {
    return ioread8(TPM_STS(tpm, tpm->locality));
@@ -1264,6 +1265,7 @@ abort_egress:
    }
    return NULL;
 }
+EXPORT_SYMBOL(init_tpm_tis);
 
 int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** resp, size_t* resplen)
 {
@@ -1281,6 +1283,7 @@ int tpm_tis_cmd(struct tpm_chip* tpm, uint8_t* req, size_t reqlen, uint8_t** res
    memcpy(*resp, tpm->data_buffer, *resplen);
    return 0;
 }
+EXPORT_SYMBOL(tpm_tis_cmd);
 
 #ifdef HAVE_LIBC
 #include <sys/stat.h>
@@ -1392,6 +1395,7 @@ int tpm_tis_open(struct tpm_chip *tpm)
 
     return tpm->fd;
 }
+EXPORT_SYMBOL(tpm_tis_open);
 
 /* TPM 2.0 */
 
@@ -1550,4 +1554,5 @@ abort_egress:
     }
     return NULL;
 }
+EXPORT_SYMBOL(init_tpm2_tis);
 #endif
