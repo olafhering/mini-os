@@ -493,6 +493,7 @@ pgentry_t *need_pgt(unsigned long va)
     offset = l1_table_offset(va);
     return &tab[offset];
 }
+EXPORT_SYMBOL(need_pgt);
 
 /*
  * Reserve an area of virtual address space for mappings and Heap
@@ -634,6 +635,7 @@ int do_map_frames(unsigned long va,
 
     return 0;
 }
+EXPORT_SYMBOL(do_map_frames);
 
 /*
  * Map an array of MFNs contiguous into virtual address space. Virtual
@@ -654,6 +656,7 @@ void *map_frames_ex(const unsigned long *mfns, unsigned long n,
 
     return (void *)va;
 }
+EXPORT_SYMBOL(map_frames_ex);
 
 /*
  * Unmap nun_frames frames mapped at virtual address va.
@@ -724,6 +727,7 @@ int unmap_frames(unsigned long va, unsigned long num_frames)
     }
     return 0;
 }
+EXPORT_SYMBOL(unmap_frames);
 
 /*
  * Clear some of the bootstrap memory
@@ -859,3 +863,4 @@ unsigned long map_frame_virt(unsigned long mfn)
 
     return addr;
 }
+EXPORT_SYMBOL(map_frame_virt);

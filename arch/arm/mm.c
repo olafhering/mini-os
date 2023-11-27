@@ -85,6 +85,7 @@ int do_map_frames(unsigned long addr,
 {
     return -ENOSYS;
 }
+EXPORT_SYMBOL(do_map_frames);
 
 /* Get Xen's suggested physical page assignments for the grant table. */
 static paddr_t get_gnttab_base(void)
@@ -149,3 +150,4 @@ unsigned long map_frame_virt(unsigned long mfn)
 {
     return mfn_to_virt(mfn);
 }
+EXPORT_SYMBOL(map_frame_virt);

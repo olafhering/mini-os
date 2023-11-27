@@ -280,6 +280,7 @@ unsigned long alloc_pages(int order)
 
     return 0;
 }
+EXPORT_SYMBOL(alloc_pages);
 
 void free_pages(void *pointer, int order)
 {
@@ -336,6 +337,7 @@ void free_pages(void *pointer, int order)
     free_head[order] = freed_ch;   
    
 }
+EXPORT_SYMBOL(free_pages);
 
 int free_physical_pages(xen_pfn_t *mfns, int n)
 {
@@ -352,6 +354,7 @@ int map_frame_rw(unsigned long addr, unsigned long mfn)
 {
     return do_map_frames(addr, &mfn, 1, 1, 1, DOMID_SELF, NULL, L1_PROT);
 }
+EXPORT_SYMBOL(map_frame_rw);
 
 #ifdef HAVE_LIBC
 void *sbrk(ptrdiff_t increment)
@@ -385,6 +388,7 @@ void *sbrk(ptrdiff_t increment)
 
     return (void *) old_brk;
 }
+EXPORT_SYMBOL(sbrk);
 #endif
 
 
