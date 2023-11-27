@@ -125,6 +125,7 @@ void console_print(struct consfront_dev *dev, const char *data, int length)
 
     ring_send_fn(dev, copied_ptr, length);
 }
+EXPORT_SYMBOL(console_print);
 
 void print(int direct, const char *fmt, va_list args)
 {
@@ -155,6 +156,7 @@ void printk(const char *fmt, ...)
     print(0, fmt, args);
     va_end(args);
 }
+EXPORT_SYMBOL(printk);
 
 void xprintk(const char *fmt, ...)
 {
@@ -164,6 +166,8 @@ void xprintk(const char *fmt, ...)
     print(1, fmt, args);
     va_end(args);
 }
+EXPORT_SYMBOL(xprintk);
+
 void init_console(void)
 {
     printk("Initialising console ... ");
@@ -320,6 +324,7 @@ int xencons_ring_avail(struct consfront_dev *dev)
 
     return prod - cons;
 }
+EXPORT_SYMBOL(xencons_ring_avail);
 
 int xencons_ring_recv(struct consfront_dev *dev, char *data, unsigned int len)
 {
