@@ -51,11 +51,13 @@ void *ioremap(unsigned long phys_addr, unsigned long size)
 {
     return __do_ioremap(phys_addr, size, IO_PROT);
 }
+EXPORT_SYMBOL(ioremap);
 
 void *ioremap_nocache(unsigned long phys_addr, unsigned long size)
 {
     return __do_ioremap(phys_addr, size, IO_PROT_NOCACHE);
 }
+EXPORT_SYMBOL(ioremap_nocache);
 
 /* Un-map the io-remapped region. Currently no list of existing mappings is
  * maintained, so the caller has to supply the size */
@@ -69,7 +71,6 @@ void iounmap(void *virt_addr, unsigned long size)
 
     unmap_frames(va & PAGE_MASK, num_pages);
 }
-
-
+EXPORT_SYMBOL(iounmap);
 
 /* -*-  Mode:C; c-basic-offset:4; tab-width:4 indent-tabs-mode:nil -*- */
