@@ -50,6 +50,9 @@
 #include <xen/features.h>
 #include <xen/version.h>
 
+void _start(void);
+EXPORT_SYMBOL(_start);
+
 uint8_t xen_features[XENFEAT_NR_SUBMAPS * 32];
 char cmdline[MAX_CMDLINE_SIZE];
 
@@ -181,6 +184,7 @@ void stop_kernel(void)
     /* Reset arch details */
     arch_fini();
 }
+EXPORT_SYMBOL(stop_kernel);
 
 /*
  * do_exit: This is called whenever an IRET fails in entry.S.
@@ -199,3 +203,4 @@ void do_exit(void)
         HYPERVISOR_sched_op(SCHEDOP_shutdown, &sched_shutdown);
     }
 }
+EXPORT_SYMBOL(do_exit);
