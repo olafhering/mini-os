@@ -370,16 +370,19 @@ out:
 err:
     return dev;
 }
+EXPORT_SYMBOL(init_netfront);
 
 char *netfront_get_netmask(struct netfront_dev *dev)
 {
     return dev->mask ? strdup(dev->mask) : NULL;
 }
+EXPORT_SYMBOL(netfront_get_netmask);
 
 char *netfront_get_gateway(struct netfront_dev *dev)
 {
     return dev->gw ? strdup(dev->gw) : NULL;
 }
+EXPORT_SYMBOL(netfront_get_gateway);
 
 static struct netfront_dev *_init_netfront(struct netfront_dev *dev)
 {
@@ -625,6 +628,7 @@ int netfront_tap_open(char *nodename) {
     file->dev = dev;
     return dev->fd;
 }
+EXPORT_SYMBOL(netfront_tap_open);
 #endif
 
 void shutdown_netfront(struct netfront_dev *dev)
@@ -654,6 +658,7 @@ void shutdown_netfront(struct netfront_dev *dev)
         free_netfront(dev);
     }
 }
+EXPORT_SYMBOL(shutdown_netfront);
 
 static int _shutdown_netfront(struct netfront_dev *dev)
 {
@@ -813,6 +818,7 @@ void netfront_xmit(struct netfront_dev *dev, const unsigned char *data, int len)
     network_tx_buf_gc(dev);
     local_irq_restore(flags);
 }
+EXPORT_SYMBOL(netfront_xmit);
 
 #ifdef HAVE_LIBC
 ssize_t netfront_receive(struct netfront_dev *dev, unsigned char *data, size_t len)
@@ -840,6 +846,7 @@ ssize_t netfront_receive(struct netfront_dev *dev, unsigned char *data, size_t l
 
     return dev->rlen;
 }
+EXPORT_SYMBOL(netfront_receive);
 #endif
 
 void netfront_set_rx_handler(struct netfront_dev *dev,
