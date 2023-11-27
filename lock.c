@@ -17,6 +17,7 @@ int ___lock_init(_LOCK_T *lock)
     init_waitqueue_head(&lock->wait);
     return 0;
 }
+EXPORT_SYMBOL(___lock_init);
 
 int ___lock_acquire(_LOCK_T *lock)
 {
@@ -32,6 +33,7 @@ int ___lock_acquire(_LOCK_T *lock)
     local_irq_restore(flags);
     return 0;
 }
+EXPORT_SYMBOL(___lock_acquire);
 
 int ___lock_try_acquire(_LOCK_T *lock)
 {
@@ -45,6 +47,7 @@ int ___lock_try_acquire(_LOCK_T *lock)
     local_irq_restore(flags);
     return ret;
 }
+EXPORT_SYMBOL(___lock_try_acquire);
 
 int ___lock_release(_LOCK_T *lock)
 {
@@ -55,7 +58,7 @@ int ___lock_release(_LOCK_T *lock)
     local_irq_restore(flags);
     return 0;
 }
-
+EXPORT_SYMBOL(___lock_release);
 
 int ___lock_init_recursive(_LOCK_RECURSIVE_T *lock)
 {
@@ -63,6 +66,7 @@ int ___lock_init_recursive(_LOCK_RECURSIVE_T *lock)
     init_waitqueue_head(&lock->wait);
     return 0;
 }
+EXPORT_SYMBOL(___lock_init_recursive);
 
 int ___lock_acquire_recursive(_LOCK_RECURSIVE_T *lock)
 {
@@ -81,6 +85,7 @@ int ___lock_acquire_recursive(_LOCK_RECURSIVE_T *lock)
     lock->count++;
     return 0;
 }
+EXPORT_SYMBOL(___lock_acquire_recursive);
 
 int ___lock_try_acquire_recursive(_LOCK_RECURSIVE_T *lock)
 {
@@ -95,6 +100,7 @@ int ___lock_try_acquire_recursive(_LOCK_RECURSIVE_T *lock)
     local_irq_restore(flags);
     return ret;
 }
+EXPORT_SYMBOL(___lock_try_acquire_recursive);
 
 int ___lock_release_recursive(_LOCK_RECURSIVE_T *lock)
 {
@@ -108,5 +114,6 @@ int ___lock_release_recursive(_LOCK_RECURSIVE_T *lock)
     local_irq_restore(flags);
     return 0;
 }
+EXPORT_SYMBOL(___lock_release_recursive);
 
 #endif
