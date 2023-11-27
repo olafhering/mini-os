@@ -338,6 +338,7 @@ __qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 	tmp.ul[L] = COMBINE(qspace[3], qspace[4]);
 	return (tmp.q);
 }
+EXPORT_SYMBOL(__qdivrem);
 
 /*
  * From
@@ -365,6 +366,7 @@ __divdi3(quad_t a, quad_t b)
 	uq = __qdivrem(ua, ub, (u_quad_t *)0);
 	return (neg ? -uq : uq);
 }
+EXPORT_SYMBOL(__divdi3);
 
 /*
  * From
@@ -379,6 +381,7 @@ __udivdi3(u_quad_t a, u_quad_t b)
 {
 	return (__qdivrem(a, b, (u_quad_t *)0));
 }
+EXPORT_SYMBOL(__udivdi3);
 
 /*
  * From
@@ -396,6 +399,7 @@ __umoddi3(u_quad_t a, u_quad_t b)
 	(void)__qdivrem(a, b, &r);
 	return (r);
 }
+EXPORT_SYMBOL(__umoddi3);
 
 /*
  * Returns the quotient and places remainder in r
@@ -405,6 +409,7 @@ __udivmoddi4(u_quad_t a, u_quad_t b, u_quad_t *r)
 {
 	return __qdivrem(a, b, r);
 }
+EXPORT_SYMBOL(__udivmoddi4);
 
 /*
  * From
@@ -434,3 +439,4 @@ __moddi3(quad_t a, quad_t b)
 	(void)__qdivrem(ua, ub, &ur);
 	return (neg ? -ur : ur);
 }
+EXPORT_SYMBOL(__moddi3);
