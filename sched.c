@@ -128,6 +128,7 @@ void schedule(void)
         }
     }
 }
+EXPORT_SYMBOL(schedule);
 
 struct thread* create_thread(char *name, void (*function)(void *), void *data)
 {
@@ -147,6 +148,7 @@ struct thread* create_thread(char *name, void (*function)(void *), void *data)
     local_irq_restore(flags);
     return thread;
 }
+EXPORT_SYMBOL(create_thread);
 
 #ifdef HAVE_LIBC
 static struct _reent callback_reent;
@@ -184,6 +186,7 @@ struct _reent *__getreent(void)
 #endif
     return _reent;
 }
+EXPORT_SYMBOL(__getreent);
 #endif
 
 void exit_thread(void)
@@ -205,12 +208,14 @@ void exit_thread(void)
         printk("schedule() returned!  Trying again\n");
     }
 }
+EXPORT_SYMBOL(exit_thread);
 
 void block(struct thread *thread)
 {
     thread->wakeup_time = 0LL;
     clear_runnable(thread);
 }
+EXPORT_SYMBOL(block);
 
 void msleep(uint32_t millisecs)
 {
@@ -219,12 +224,14 @@ void msleep(uint32_t millisecs)
     clear_runnable(thread);
     schedule();
 }
+EXPORT_SYMBOL(msleep);
 
 void wake(struct thread *thread)
 {
     thread->wakeup_time = 0LL;
     set_runnable(thread);
 }
+EXPORT_SYMBOL(wake);
 
 void idle_thread_fn(void *unused)
 {

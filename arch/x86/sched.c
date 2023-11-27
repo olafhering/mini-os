@@ -142,11 +142,13 @@ unsigned long __local_irq_save(void)
     local_irq_save(flags);
     return flags;
 }
+EXPORT_SYMBOL(__local_irq_save);
 
 void __local_irq_restore(unsigned long flags)
 {
     local_irq_restore(flags);
 }
+EXPORT_SYMBOL(__local_irq_restore);
 
 unsigned long __local_save_flags(void)
 {
@@ -155,13 +157,16 @@ unsigned long __local_save_flags(void)
     local_save_flags(flags);
     return flags;
 }
+EXPORT_SYMBOL(__local_save_flags);
 
 void __local_irq_disable(void)
 {
     local_irq_disable();
 }
+EXPORT_SYMBOL(__local_irq_disable);
 
 void __local_irq_enable(void)
 {
     local_irq_enable();
 }
+EXPORT_SYMBOL(__local_irq_enable);
