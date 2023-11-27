@@ -53,6 +53,7 @@
 #include <stddef.h>
 #include <xen/xen.h>
 #include <xen/event_channel.h>
+#include <mini-os/export.h>
 #include "gntmap.h"
 
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)

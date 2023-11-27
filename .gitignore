@@ -16,3 +16,4 @@ mini-os.gz
 minios-config.mk
 mini-os-debug
 mini-os-debug.gz
+syms
