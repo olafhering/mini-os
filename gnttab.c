@@ -80,6 +80,7 @@ gnttab_grant_access(domid_t domid, unsigned long frame, int readonly)
 
     return ref;
 }
+EXPORT_SYMBOL(gnttab_grant_access);
 
 grant_ref_t
 gnttab_grant_transfer(domid_t domid, unsigned long pfn)
@@ -94,6 +95,7 @@ gnttab_grant_transfer(domid_t domid, unsigned long pfn)
 
     return ref;
 }
+EXPORT_SYMBOL(gnttab_grant_transfer);
 
 int
 gnttab_end_access(grant_ref_t ref)
@@ -114,6 +116,7 @@ gnttab_end_access(grant_ref_t ref)
     put_free_entry(ref);
     return 1;
 }
+EXPORT_SYMBOL(gnttab_end_access);
 
 unsigned long
 gnttab_end_transfer(grant_ref_t ref)
@@ -144,6 +147,7 @@ gnttab_end_transfer(grant_ref_t ref)
 
     return frame;
 }
+EXPORT_SYMBOL(gnttab_end_transfer);
 
 grant_ref_t
 gnttab_alloc_and_grant(void **map)
@@ -156,6 +160,7 @@ gnttab_alloc_and_grant(void **map)
     gref = gnttab_grant_access(0, mfn, 0);
     return gref;
 }
+EXPORT_SYMBOL(gnttab_alloc_and_grant);
 
 static const char * const gnttabop_error_msgs[] = GNTTABOP_error_msgs;
 
@@ -168,6 +173,7 @@ gnttabop_error(int16_t status)
     else
         return gnttabop_error_msgs[status];
 }
+EXPORT_SYMBOL(gnttabop_error);
 
 void
 init_gnttab(void)
