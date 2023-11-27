@@ -278,6 +278,7 @@ error:
     free_pcifront(dev);
     return NULL;
 }
+EXPORT_SYMBOL(init_pcifront);
 
 void pcifront_scan(struct pcifront_dev *dev, void (*func)(unsigned int domain, unsigned int bus, unsigned slot, unsigned int fun))
 {
@@ -319,6 +320,7 @@ void pcifront_scan(struct pcifront_dev *dev, void (*func)(unsigned int domain, u
     }
     free(path);
 }
+EXPORT_SYMBOL(pcifront_scan);
 
 void shutdown_pcifront(struct pcifront_dev *dev)
 {
@@ -377,6 +379,7 @@ close_pcifront:
     if (!err)
         free_pcifront(dev);
 }
+EXPORT_SYMBOL(shutdown_pcifront);
 
 int pcifront_physical_to_virtual (struct pcifront_dev *dev,
                                   unsigned int *dom,
@@ -451,6 +454,7 @@ void pcifront_op(struct pcifront_dev *dev, struct xen_pci_op *op)
     rmb();
     *op = dev->info->op;
 }
+EXPORT_SYMBOL(pcifront_op);
 
 int pcifront_conf_read(struct pcifront_dev *dev,
                        unsigned int dom,
@@ -481,6 +485,7 @@ int pcifront_conf_read(struct pcifront_dev *dev,
 
     return 0;
 }
+EXPORT_SYMBOL(pcifront_conf_read);
 
 int pcifront_conf_write(struct pcifront_dev *dev,
                         unsigned int dom,
@@ -508,6 +513,7 @@ int pcifront_conf_write(struct pcifront_dev *dev,
 
     return op.err;
 }
+EXPORT_SYMBOL(pcifront_conf_write);
 
 int pcifront_enable_msi(struct pcifront_dev *dev,
                         unsigned int dom,
@@ -533,6 +539,7 @@ int pcifront_enable_msi(struct pcifront_dev *dev,
     else
         return op.value;
 }
+EXPORT_SYMBOL(pcifront_enable_msi);
 
 int pcifront_disable_msi(struct pcifront_dev *dev,
                          unsigned int dom,
@@ -555,6 +562,7 @@ int pcifront_disable_msi(struct pcifront_dev *dev,
     
     return op.err;
 }
+EXPORT_SYMBOL(pcifront_disable_msi);
 
 int pcifront_enable_msix(struct pcifront_dev *dev,
                          unsigned int dom,
@@ -589,7 +597,7 @@ int pcifront_enable_msix(struct pcifront_dev *dev,
 
     return 0;
 }
-
+EXPORT_SYMBOL(pcifront_enable_msix);
 
 int pcifront_disable_msix(struct pcifront_dev *dev,
                           unsigned int dom,
@@ -612,3 +620,4 @@ int pcifront_disable_msix(struct pcifront_dev *dev,
     
     return op.err;
 }
+EXPORT_SYMBOL(pcifront_disable_msix);
