@@ -804,6 +804,7 @@ void* tpmback_get_opaque(domid_t domid, unsigned int handle)
 
    return tpmif->opaque;
 }
+EXPORT_SYMBOL(tpmback_get_opaque);
 
 int tpmback_set_opaque(domid_t domid, unsigned int handle, void *opaque)
 {
@@ -816,6 +817,7 @@ int tpmback_set_opaque(domid_t domid, unsigned int handle, void *opaque)
    tpmif->opaque = opaque;
    return 0;
 }
+EXPORT_SYMBOL(tpmback_set_opaque);
 
 unsigned char* tpmback_get_uuid(domid_t domid, unsigned int handle)
 {
@@ -827,6 +829,7 @@ unsigned char* tpmback_get_uuid(domid_t domid, unsigned int handle)
 
    return tpmif->uuid;
 }
+EXPORT_SYMBOL(tpmback_get_uuid);
 
 int tpmback_get_peercontext(domid_t domid, unsigned int handle, void* buffer, int buflen)
 {
@@ -838,6 +841,7 @@ int tpmback_get_peercontext(domid_t domid, unsigned int handle, void* buffer, in
 
    return evtchn_get_peercontext(tpmif->evtchn, buffer, buflen);
 }
+EXPORT_SYMBOL(tpmback_get_peercontext);
 
 static void event_listener(void)
 {
@@ -903,6 +907,7 @@ void init_tpmback(void (*open_cb)(domid_t, unsigned int), void (*close_cb)(domid
    eventthread = create_thread("tpmback-listener", event_thread, NULL);
 
 }
+EXPORT_SYMBOL(init_tpmback);
 
 void shutdown_tpmback(void)
 {
@@ -923,6 +928,7 @@ void shutdown_tpmback(void)
    wake_up(&waitq);
    schedule();
 }
+EXPORT_SYMBOL(shutdown_tpmback);
 
 static void init_tpmcmd(tpmcmd_t* tpmcmd, domid_t domid, unsigned int handle, void *opaque)
 {
@@ -1061,6 +1067,7 @@ tpmcmd_t* tpmback_req_any(void)
    TPMBACK_ERR("backend request ready flag was set but no interfaces were actually ready\n");
    return NULL;
 }
+EXPORT_SYMBOL(tpmback_req_any);
 
 tpmcmd_t* tpmback_req(domid_t domid, unsigned int handle)
 {
@@ -1081,6 +1088,7 @@ tpmcmd_t* tpmback_req(domid_t domid, unsigned int handle)
 
    return get_request(tpmif);
 }
+EXPORT_SYMBOL(tpmback_req);
 
 void tpmback_resp(tpmcmd_t* tpmcmd)
 {
@@ -1108,6 +1116,7 @@ end:
    free(tpmcmd);
    return;
 }
+EXPORT_SYMBOL(tpmback_resp);
 
 int tpmback_wait_for_frontend_connect(domid_t *domid, unsigned int *handle)
 {
@@ -1125,8 +1134,10 @@ int tpmback_wait_for_frontend_connect(domid_t *domid, unsigned int *handle)
 
    return 0;
 }
+EXPORT_SYMBOL(tpmback_wait_for_frontend_connect);
 
 int tpmback_num_frontends(void)
 {
    return gtpmdev.num_tpms;
 }
+EXPORT_SYMBOL(tpmback_num_frontends);
