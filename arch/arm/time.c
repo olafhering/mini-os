@@ -83,6 +83,7 @@ int gettimeofday(struct timeval *tv, void *tz)
 
     return 0;
 }
+EXPORT_SYMBOL(gettimeofday);
 
 /* Set the timer and mask. */
 void write_timer_ctl(uint32_t value) {

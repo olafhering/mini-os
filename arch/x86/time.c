@@ -204,7 +204,7 @@ int gettimeofday(struct timeval *tv, void *tz)
 
     return 0;
 }
-
+EXPORT_SYMBOL(gettimeofday);
 
 void block_domain(s_time_t until)
 {
