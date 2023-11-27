@@ -31,6 +31,8 @@
 #include <mini-os/events.h>
 #include <xen/memory.h>
 
+EXPORT_SYMBOL(hypercall_page);
+
 #define active_evtchns(cpu,sh,idx)              \
     ((sh)->evtchn_pending[idx] &                \
      ~(sh)->evtchn_mask[idx])
@@ -157,6 +159,7 @@ inline void mask_evtchn(uint32_t port)
     shared_info_t *s = HYPERVISOR_shared_info;
     synch_set_bit(port, &s->evtchn_mask[0]);
 }
+EXPORT_SYMBOL(mask_evtchn);
 
 inline void unmask_evtchn(uint32_t port)
 {
@@ -180,9 +183,11 @@ inline void unmask_evtchn(uint32_t port)
             force_evtchn_callback();
     }
 }
+EXPORT_SYMBOL(unmask_evtchn);
 
 inline void clear_evtchn(uint32_t port)
 {
     shared_info_t *s = HYPERVISOR_shared_info;
     synch_clear_bit(port, &s->evtchn_pending[0]);
 }
+EXPORT_SYMBOL(clear_evtchn);
