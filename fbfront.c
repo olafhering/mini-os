@@ -201,6 +201,7 @@ error:
     free_kbdfront(dev);
     return NULL;
 }
+EXPORT_SYMBOL(init_kbdfront);
 
 int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n)
 {
@@ -239,7 +240,7 @@ int kbdfront_receive(struct kbdfront_dev *dev, union xenkbd_in_event *buf, int n
 
     return i;
 }
-
+EXPORT_SYMBOL(kbdfront_receive);
 
 void shutdown_kbdfront(struct kbdfront_dev *dev)
 {
@@ -301,6 +302,7 @@ close_kbdfront:
     if (!err)
         free_kbdfront(dev);
 }
+EXPORT_SYMBOL(shutdown_kbdfront);
 
 #ifdef HAVE_LIBC
 static int kbd_read(struct file *file, void *buf, size_t nbytes)
@@ -351,6 +353,7 @@ int kbdfront_open(struct kbdfront_dev *dev)
 
     return dev->fd;
 }
+EXPORT_SYMBOL(kbdfront_open);
 #endif
 
 
@@ -451,6 +454,7 @@ int fbfront_receive(struct fbfront_dev *dev, union xenfb_in_event *buf, int n)
 
     return i;
 }
+EXPORT_SYMBOL(fbfront_receive);
 
 struct fbfront_dev *init_fbfront(char *_nodename, unsigned long *mfns, int width, int height, int depth, int stride, int n)
 {
@@ -617,6 +621,7 @@ error:
     free_fbfront(dev);
     return NULL;
 }
+EXPORT_SYMBOL(init_fbfront);
 
 static void fbfront_out_event(struct fbfront_dev *dev, union xenfb_out_event *event)
 {
@@ -668,6 +673,7 @@ void fbfront_update(struct fbfront_dev *dev, int x, int y, int width, int height
     update.height = height;
     fbfront_out_event(dev, (union xenfb_out_event *) &update);
 }
+EXPORT_SYMBOL(fbfront_update);
 
 void fbfront_resize(struct fbfront_dev *dev, int width, int height, int stride, int depth, int offset)
 {
@@ -681,6 +687,7 @@ void fbfront_resize(struct fbfront_dev *dev, int width, int height, int stride, 
     dev->offset = resize.offset = offset;
     fbfront_out_event(dev, (union xenfb_out_event *) &resize);
 }
+EXPORT_SYMBOL(fbfront_resize);
 
 void shutdown_fbfront(struct fbfront_dev *dev)
 {
@@ -745,6 +752,7 @@ close_fbfront:
     if (!err)
         free_fbfront(dev);
 }
+EXPORT_SYMBOL(shutdown_fbfront);
 
 #ifdef HAVE_LIBC
 static int fbfront_read(struct file *file, void *buf, size_t nbytes)
@@ -794,5 +802,6 @@ int fbfront_open(struct fbfront_dev *dev)
     file->dev = dev;
     return dev->fd;
 }
+EXPORT_SYMBOL(fbfront_open);
 #endif
 
