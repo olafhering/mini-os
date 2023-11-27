@@ -150,6 +150,7 @@ strtoul(const char *nptr, char **endptr, int base)
                 *endptr = __DECONST(char *, any ? s - 1 : nptr);
         return (acc);
 }
+EXPORT_SYMBOL(strtoul);
 
 /*
  * Convert a string to a quad integer.
@@ -241,6 +242,7 @@ strtoq(const char *nptr, char **endptr, int base)
                 *endptr = __DECONST(char *, any ? s - 1 : nptr);
         return (acc);
 }
+EXPORT_SYMBOL(strtoq);
 
 /*
  * Convert a string to an unsigned quad integer.
@@ -309,6 +311,7 @@ strtouq(const char *nptr, char **endptr, int base)
                 *endptr = __DECONST(char *, any ? s - 1 : nptr);
         return (acc);
 }
+EXPORT_SYMBOL(strtouq);
 
 /*
  * Scaled down version of printf(3).
@@ -585,6 +588,7 @@ number:
         }
 #undef PCHAR
 }
+EXPORT_SYMBOL(vsnprintf);
 
 /**
  * snprintf - Format a string and place it in a buffer
@@ -603,6 +607,7 @@ int snprintf(char * buf, size_t size, const char *fmt, ...)
     va_end(args);
     return i;
 }
+EXPORT_SYMBOL(snprintf);
 
 /**
  * vsprintf - Format a string and place it in a buffer
@@ -617,7 +622,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 {
     return vsnprintf(buf, 0xFFFFFFFFUL, fmt, args);
 }
-
+EXPORT_SYMBOL(vsprintf);
 
 /**
  * sprintf - Format a string and place it in a buffer
@@ -635,6 +640,7 @@ int sprintf(char * buf, const char *fmt, ...)
     va_end(args);
     return i;
 }
+EXPORT_SYMBOL(sprintf);
 
 /*
  * Fill in the given table from the scanset at the given format
@@ -1214,6 +1220,7 @@ input_failure:
 match_failure:
         return (nassigned);
 }
+EXPORT_SYMBOL(vsscanf);
 
 /**
  * sscanf - Unformat a buffer into a list of arguments
@@ -1231,5 +1238,6 @@ int sscanf(const char * buf, const char * fmt, ...)
 	va_end(args);
 	return i;
 }
+EXPORT_SYMBOL(sscanf);
 
 #endif
