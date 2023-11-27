@@ -38,10 +38,12 @@ int main(int argc, char *argv[], char *envp[])
 void _init(void)
 {
 }
+EXPORT_SYMBOL(_init);
 
 void _fini(void)
 {
 }
+EXPORT_SYMBOL(_fini);
 
 extern char __app_bss_start, __app_bss_end;
 static void call_main(void *p)
@@ -189,6 +191,7 @@ void _exit(int ret)
     }
     do_exit();
 }
+EXPORT_SYMBOL(_exit);
 
 int app_main(void *p)
 {
