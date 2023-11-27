@@ -23,9 +23,7 @@
 /* Note: we really suppose non-preemptive threads.  */
 
 DECLARE_WAIT_QUEUE_HEAD(blkfront_queue);
-
-
-
+EXPORT_SYMBOL(blkfront_queue);
 
 #define BLK_RING_SIZE __RING_SIZE((struct blkif_sring *)0, PAGE_SIZE)
 #define GRANT_INVALID_REF 0
@@ -243,6 +241,7 @@ error:
     free_blkfront(dev);
     return NULL;
 }
+EXPORT_SYMBOL(init_blkfront);
 
 void shutdown_blkfront(struct blkfront_dev *dev)
 {
@@ -304,6 +303,7 @@ close:
     if (!err)
         free_blkfront(dev);
 }
+EXPORT_SYMBOL(shutdown_blkfront);
 
 static void blkfront_wait_slot(struct blkfront_dev *dev)
 {
@@ -386,6 +386,7 @@ void blkfront_aio(struct blkfront_aiocb *aiocbp, int write)
 
     if(notify) notify_remote_via_evtchn(dev->evtchn);
 }
+EXPORT_SYMBOL(blkfront_aio);
 
 static void blkfront_aio_cb(struct blkfront_aiocb *aiocbp, int ret)
 {
@@ -417,6 +418,7 @@ void blkfront_io(struct blkfront_aiocb *aiocbp, int write)
     remove_waiter(w, blkfront_queue);
     local_irq_restore(flags);
 }
+EXPORT_SYMBOL(blkfront_io);
 
 static void blkfront_push_operation(struct blkfront_dev *dev, uint8_t op, uint64_t id)
 {
@@ -444,6 +446,7 @@ void blkfront_aio_push_operation(struct blkfront_aiocb *aiocbp, uint8_t op)
     struct blkfront_dev *dev = aiocbp->aio_dev;
     blkfront_push_operation(dev, op, (uintptr_t) aiocbp);
 }
+EXPORT_SYMBOL(blkfront_aio_push_operation);
 
 void blkfront_sync(struct blkfront_dev *dev)
 {
@@ -473,6 +476,7 @@ void blkfront_sync(struct blkfront_dev *dev)
     remove_waiter(w, blkfront_queue);
     local_irq_restore(flags);
 }
+EXPORT_SYMBOL(blkfront_sync);
 
 int blkfront_aio_poll(struct blkfront_dev *dev)
 {
@@ -557,6 +561,7 @@ moretodo:
 
     return nr_consumed;
 }
+EXPORT_SYMBOL(blkfront_aio_poll);
 
 #ifdef HAVE_LIBC
 static int blkfront_posix_rwop(struct file *file, uint8_t *buf, size_t count,
@@ -773,4 +778,5 @@ int blkfront_open(struct blkfront_dev *dev)
 
     return dev->fd;
 }
+EXPORT_SYMBOL(blkfront_open);
 #endif
