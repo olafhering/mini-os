@@ -250,7 +250,7 @@ void networking_set_addr(struct ip_addr *ipaddr, struct ip_addr *netmask, struct
   netif_set_netmask(the_interface, netmask);
   netif_set_gw(the_interface, gw);
 }
-
+EXPORT_SYMBOL(networking_set_addr);
 
 static void
 arp_timer(void *arg)

@@ -12,7 +12,9 @@
 #include <console.h>
 #include <xmalloc.h>
 #include <lwip/sys.h>
+#include <lwip/inet.h>
 #include <stdarg.h>
+#include <mini-os/export.h>
 
 /* Is called to initialize the sys_arch layer */
 void sys_init(void)
@@ -293,3 +295,10 @@ void lwip_die(char *fmt, ...)
     printk("\n");
     BUG();
 }
+
+EXPORT_SYMBOL(htonl);
+EXPORT_SYMBOL(htons);
+EXPORT_SYMBOL(inet_aton);
+EXPORT_SYMBOL(inet_ntoa);
+EXPORT_SYMBOL(ntohl);
+EXPORT_SYMBOL(ntohs);
