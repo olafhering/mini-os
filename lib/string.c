@@ -19,6 +19,7 @@
  */
 
 #include <strings.h>
+#include <mini-os/export.h>
 
 /* newlib defines ffs but not ffsll or ffsl */
 int __ffsti2 (long long int lli)
@@ -49,11 +50,13 @@ int ffsl (long int li)
 {
     return __ffsti2 ((long long int) li);
 }
+EXPORT_SYMBOL(ffsl);
 
 int ffsll (long long int lli)
 {
     return __ffsti2 (lli);
 }
+EXPORT_SYMBOL(ffsll);
 
 #if !defined HAVE_LIBC
 
@@ -72,6 +75,7 @@ int memcmp(const void * cs,const void * ct,size_t count)
 			break;
 	return res;
 }
+EXPORT_SYMBOL(memcmp);
 
 void * memcpy(void * dest,const void *src,size_t count)
 {
@@ -83,6 +87,7 @@ void * memcpy(void * dest,const void *src,size_t count)
 
 	return dest;
 }
+EXPORT_SYMBOL(memcpy);
 
 int strncmp(const char * cs,const char * ct,size_t count)
 {
@@ -96,6 +101,7 @@ int strncmp(const char * cs,const char * ct,size_t count)
 
 	return __res;
 }
+EXPORT_SYMBOL(strncmp);
 
 int strcmp(const char * cs,const char * ct)
 {
@@ -108,6 +114,7 @@ int strcmp(const char * cs,const char * ct)
 
         return __res;
 }
+EXPORT_SYMBOL(strcmp);
 
 char * strcpy(char * dest,const char *src)
 {
@@ -117,6 +124,7 @@ char * strcpy(char * dest,const char *src)
                 /* nothing */;
         return tmp;
 }
+EXPORT_SYMBOL(strcpy);
 
 char * strncpy(char * dest,const char *src,size_t count)
 {
@@ -127,6 +135,7 @@ char * strncpy(char * dest,const char *src,size_t count)
 
         return tmp;
 }
+EXPORT_SYMBOL(strncpy);
 
 void * memset(void * s,int c,size_t count)
 {
@@ -137,6 +146,7 @@ void * memset(void * s,int c,size_t count)
 
         return s;
 }
+EXPORT_SYMBOL(memset);
 
 size_t strnlen(const char * s, size_t count)
 {
@@ -146,6 +156,7 @@ size_t strnlen(const char * s, size_t count)
                 /* nothing */;
         return sc - s;
 }
+EXPORT_SYMBOL(strnlen);
 
 
 char * strcat(char * dest, const char * src)
@@ -159,6 +170,7 @@ char * strcat(char * dest, const char * src)
     
     return tmp;
 }
+EXPORT_SYMBOL(strcat);
 
 size_t strlen(const char * s)
 {
@@ -168,6 +180,7 @@ size_t strlen(const char * s)
 		/* nothing */;
 	return sc - s;
 }
+EXPORT_SYMBOL(strlen);
 
 char * strchr(const char * s, int c)
 {
@@ -176,6 +189,7 @@ char * strchr(const char * s, int c)
                         return NULL;
         return (char *)s;
 }
+EXPORT_SYMBOL(strchr);
 
 char * strrchr(const char * s, int c)
 {
@@ -185,6 +199,7 @@ char * strrchr(const char * s, int c)
                         res = s;
         return (char *)res;
 }
+EXPORT_SYMBOL(strrchr);
 
 char * strstr(const char * s1,const char * s2)
 {
@@ -202,6 +217,7 @@ char * strstr(const char * s1,const char * s2)
         }
         return NULL;
 }
+EXPORT_SYMBOL(strstr);
 
 char *strdup(const char *x)
 {
@@ -211,6 +227,7 @@ char *strdup(const char *x)
     memcpy(res, x, l + 1);
     return res;
 }
+EXPORT_SYMBOL(strdup);
 
 int ffs(int i)
 {
@@ -224,5 +241,6 @@ int ffs(int i)
    } while (i);
    return 0;
 }
+EXPORT_SYMBOL(ffs);
 
 #endif
