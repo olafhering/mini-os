@@ -166,7 +166,9 @@ $(OBJ_DIR)/arch/x86/minios-x86%.lds:  arch/x86/minios-x86.lds.S
 
 $(OBJ_DIR)/$(TARGET)-kern.o: $(OBJS) arch_lib $(OBJ_DIR)/$(TARGET_ARCH_DIR)/minios-$(MINIOS_TARGET_ARCH).lds
 	$(LD) -r $(LDFLAGS) $(HEAD_OBJ) $(OBJS) $(LDARCHLIB) -o $@
-	$(OBJCOPY) --dump-section .export_symbol=$(OBJ_DIR)/syms $@
+	# The following would be neat, but isn't supported in binutils < 2.25
+	# $(OBJCOPY) --dump-section .export_symbol=$(OBJ_DIR)/syms $@
+	$(OBJCOPY) --set-section-flags .export_symbol=alloc -O binary --only-section=.export_symbol $@ $(OBJ_DIR)/syms
 	$(OBJCOPY) -w -G $(GLOBAL_PREFIX)* --keep-global-symbols=$(OBJ_DIR)/syms --remove-section=.export_symbol $@ $@
 
 $(OBJ_DIR)/$(TARGET): $(OBJ_DIR)/$(TARGET)-kern.o $(APP_O)
