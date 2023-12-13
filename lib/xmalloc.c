@@ -219,7 +219,7 @@ void xfree(const void *p)
     if(((long)p & PAGE_MASK) != ((long)hdr & PAGE_MASK))
     {
         printk("Header should be on the same page\n");
-        *(int*)0=0;
+        BUG();
     }
 
     /* Merge with other free block, or put in list. */
@@ -255,7 +255,7 @@ void xfree(const void *p)
         if((((unsigned long)hdr) & (PAGE_SIZE-1)) != 0)
         {
             printk("Bug\n");
-            *(int*)0=0;
+            BUG();
         }
         free_page(hdr);
     }
