@@ -86,6 +86,33 @@ TARGET_ARCH_DIR := arch/$(TARGET_ARCH_FAM)
 export TARGET_ARCH_DIR
 export TARGET_ARCH_FAM
 
+# Set tools
+AS         = $(CROSS_COMPILE)as
+LD         = $(CROSS_COMPILE)ld
+ifeq ($(clang),y)
+CC         = $(CROSS_COMPILE)clang
+LD_LTO     = $(CROSS_COMPILE)llvm-ld
+else
+CC         = $(CROSS_COMPILE)gcc
+LD_LTO     = $(CROSS_COMPILE)ld
+endif
+CPP        = $(CC) -E
+AR         = $(CROSS_COMPILE)ar
+RANLIB     = $(CROSS_COMPILE)ranlib
+NM         = $(CROSS_COMPILE)nm
+STRIP      = $(CROSS_COMPILE)strip
+OBJCOPY    = $(CROSS_COMPILE)objcopy
+OBJDUMP    = $(CROSS_COMPILE)objdump
+SIZEUTIL   = $(CROSS_COMPILE)size
+
+# Allow git to be wrappered in the environment
+GIT        ?= git
+
+INSTALL      = install
+INSTALL_DIR  = $(INSTALL) -d -m0755 -p
+INSTALL_DATA = $(INSTALL) -m0644 -p
+INSTALL_PROG = $(INSTALL) -m0755 -p
+
 # This is used for architecture specific links.
 # This can be overwritten from arch specific rules.
 ARCH_LINKS =
@@ -118,33 +145,6 @@ DEF_CPPFLAGS += -DHAVE_LWIP
 DEF_CPPFLAGS += -isystem $(LWIPDIR)/src/include
 DEF_CPPFLAGS += -isystem $(LWIPDIR)/src/include/ipv4
 endif
-
-# Set tools
-AS         = $(CROSS_COMPILE)as
-LD         = $(CROSS_COMPILE)ld
-ifeq ($(clang),y)
-CC         = $(CROSS_COMPILE)clang
-LD_LTO     = $(CROSS_COMPILE)llvm-ld
-else
-CC         = $(CROSS_COMPILE)gcc
-LD_LTO     = $(CROSS_COMPILE)ld
-endif
-CPP        = $(CC) -E
-AR         = $(CROSS_COMPILE)ar
-RANLIB     = $(CROSS_COMPILE)ranlib
-NM         = $(CROSS_COMPILE)nm
-STRIP      = $(CROSS_COMPILE)strip
-OBJCOPY    = $(CROSS_COMPILE)objcopy
-OBJDUMP    = $(CROSS_COMPILE)objdump
-SIZEUTIL   = $(CROSS_COMPILE)size
-
-# Allow git to be wrappered in the environment
-GIT        ?= git
-
-INSTALL      = install
-INSTALL_DIR  = $(INSTALL) -d -m0755 -p
-INSTALL_DATA = $(INSTALL) -m0644 -p
-INSTALL_PROG = $(INSTALL) -m0755 -p
 
 BOOT_DIR ?= /boot
 
