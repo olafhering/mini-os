@@ -37,8 +37,6 @@ EXPORT_SYMBOL(hypercall_page);
     ((sh)->evtchn_pending[idx] &                \
      ~(sh)->evtchn_mask[idx])
 
-int in_callback;
-
 #ifndef CONFIG_PARAVIRT
 extern shared_info_t shared_info;
 
@@ -104,8 +102,6 @@ void do_hypervisor_callback(struct pt_regs *regs)
 
     BUG_ON(!irqs_disabled());
 
-    in_callback = 1;
-   
     vcpu_info->evtchn_upcall_pending = 0;
     /* NB x86. No need for a barrier here -- XCHG is a barrier on x86. */
 #if !defined(__i386__) && !defined(__x86_64__)
@@ -127,8 +123,6 @@ void do_hypervisor_callback(struct pt_regs *regs)
             do_event(port, regs);
         }
     }
-
-    in_callback = 0;
 }
 
 void force_evtchn_callback(void)

@@ -76,11 +76,6 @@ void schedule(void)
     prev = current;
     local_irq_save(flags); 
 
-    if (in_callback) {
-        printk("Must not call schedule() from a callback\n");
-        BUG();
-    }
-
     do {
         /* Examine all threads.
            Find a runnable thread, but also wake up expired ones and find the
@@ -151,15 +146,12 @@ struct thread* create_thread(char *name, void (*function)(void *), void *data)
 EXPORT_SYMBOL(create_thread);
 
 #ifdef HAVE_LIBC
-static struct _reent callback_reent;
 struct _reent *__getreent(void)
 {
     struct _reent *_reent;
 
     if (!threads_started)
         _reent = _impure_ptr;
-    else if (in_callback)
-        _reent = &callback_reent;
     else
         _reent = &get_current()->reent;
 
@@ -246,9 +238,6 @@ void init_sched(void)
 {
     printk("Initialising scheduler\n");
 
-#ifdef HAVE_LIBC
-    _REENT_INIT_PTR((&callback_reent))
-#endif
     idle_thread = create_thread("Idle", idle_thread_fn, NULL);
 }
 
