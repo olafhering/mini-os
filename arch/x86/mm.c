@@ -57,6 +57,7 @@
 unsigned long *phys_to_machine_mapping;
 unsigned long mfn_zero;
 pgentry_t *pt_base;
+EXPORT_SYMBOL(pt_base);
 static unsigned long first_free_pfn;
 static unsigned long last_free_pfn;
 static unsigned long virt_kernel_area_end = VIRT_KERNEL_AREA;
