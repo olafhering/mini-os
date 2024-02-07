@@ -728,6 +728,8 @@ static int p9_stat(struct dev_9pfs *dev, uint32_t fid, struct p9_stat *stat)
            &stat->extension, &stat->n_uid, &stat->n_gid, &stat->n_muid);
 
     ret = req->result;
+    if ( ret )
+        free_stat(&stat);
 
     put_free_req(dev, req);
 
@@ -932,13 +934,13 @@ static int write_9pfs(struct file *file, const void *buf, size_t nbytes)
     if ( f9pfs->append )
     {
         ret = p9_stat(f9pfs->dev, f9pfs->fid, &stat);
-        free_stat(&stat);
         if ( ret )
         {
             errno = EIO;
             return -1;
         }
         file->offset = stat.length;
+        free_stat(&stat);
     }
 
     ret = p9_write(f9pfs->dev, f9pfs->fid, file->offset, buf, nbytes);
