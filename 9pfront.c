@@ -729,7 +729,7 @@ static int p9_stat(struct dev_9pfs *dev, uint32_t fid, struct p9_stat *stat)
 
     ret = req->result;
     if ( ret )
-        free_stat(&stat);
+        free_stat(stat);
 
     put_free_req(dev, req);
 
