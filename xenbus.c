@@ -45,6 +45,7 @@
 #endif
 
 struct xenstore_domain_interface *xenstore_buf;
+EXPORT_SYMBOL(xenstore_buf);
 static DECLARE_WAIT_QUEUE_HEAD(xb_waitq);
 DECLARE_WAIT_QUEUE_HEAD(xenbus_watch_queue);
 static __DECLARE_SEMAPHORE_GENERIC(xb_write_sem, 1);
@@ -70,6 +71,7 @@ static struct xenbus_req_info req_info[NR_REQS];
 static char *errmsg(struct xsd_sockmsg *rep);
 
 uint32_t xenbus_evtchn;
+EXPORT_SYMBOL(xenbus_evtchn);
 
 #ifdef CONFIG_PARAVIRT
 void get_xenbus(void *p)
