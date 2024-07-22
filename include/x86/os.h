@@ -61,6 +61,16 @@
 #define TRAP_deferred_nmi     31
 #define TRAP_xen_callback     32
 
+#if defined(__i386__)
+#define __SZ    "l"
+#define __REG   "e"
+#else
+#define __SZ    "q"
+#define __REG   "r"
+#endif
+
+#define ASM_SP  __REG"sp"
+
 /* Everything below this point is not included by assembler (.S) files. */
 #ifndef __ASSEMBLY__
 
@@ -140,14 +150,6 @@ do {									\
     HYPERVISOR_shared_info->vcpu_info[smp_processor_id()].evtchn_upcall_mask
 
 #else
-
-#if defined(__i386__)
-#define __SZ "l"
-#define __REG "e"
-#else
-#define __SZ "q"
-#define __REG "r"
-#endif
 
 #define __cli() asm volatile ( "cli" : : : "memory" )
 #define __sti() asm volatile ( "sti" : : : "memory" )
