@@ -48,7 +48,6 @@ struct shadow_time_info {
     uint64_t tsc_timestamp;     /* TSC at last update of time vals.  */
     uint64_t system_timestamp;  /* Time, in nanosecs, since boot.    */
     uint32_t tsc_to_nsec_mul;
-    uint32_t tsc_to_usec_mul;
     int tsc_shift;
     uint32_t version;
 };
@@ -56,19 +55,6 @@ static struct timespec shadow_ts;
 static uint32_t shadow_ts_version;
 
 static struct shadow_time_info shadow;
-
-#ifndef rmb
-#define rmb()  __asm__ __volatile__ ("lock; addl $0,0(%%esp)" : : : "memory")
-#endif
-
-#define HANDLE_USEC_OVERFLOW(_tv)           \
-    do {                                    \
-        while ( (_tv)->tv_usec >= 1000000 ) \
-        {                                   \
-            (_tv)->tv_usec -= 1000000;      \
-            (_tv)->tv_sec++;                \
-        }                                   \
-    } while ( 0 )
 
 static inline int time_values_up_to_date(void)
 {
@@ -143,8 +129,6 @@ static void get_time_values_from_xen(void)
         shadow.tsc_shift         = src->tsc_shift;
         rmb();
     } while ( (src->version & 1) | (shadow.version ^ src->version) );
-
-    shadow.tsc_to_usec_mul = shadow.tsc_to_nsec_mul / 1000;
 }
 
 /*
