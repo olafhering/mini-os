@@ -198,6 +198,10 @@ static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn,
     *pt_pfn += 1;
 }
 
+#ifdef CONFIG_PARAVIRT
+static mmu_update_t mmu_updates[L1_PAGETABLE_ENTRIES + 1];
+#endif
+
 /*
  * Build the initial pagetable.
  */
@@ -209,7 +213,6 @@ static void build_pagetable(unsigned long *start_pfn, unsigned long *max_pfn)
     unsigned long pt_mfn = pfn_to_mfn(virt_to_pfn(pt_base));
     unsigned long offset;
 #ifdef CONFIG_PARAVIRT
-    static mmu_update_t mmu_updates[L1_PAGETABLE_ENTRIES + 1];
     int count = 0;
     int rc;
 #endif
@@ -323,7 +326,6 @@ static void set_readonly(void *text, void *etext)
     unsigned long offset;
     unsigned long page_size = PAGE_SIZE;
 #ifdef CONFIG_PARAVIRT
-    static mmu_update_t mmu_updates[L1_PAGETABLE_ENTRIES + 1];
     int count = 0;
     int rc;
 #endif
