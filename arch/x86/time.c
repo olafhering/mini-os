@@ -44,24 +44,10 @@
  *************************************************************************/
 
 /* These are peridically updated in shared_info, and then copied here. */
-struct shadow_time_info {
-    uint64_t tsc_timestamp;     /* TSC at last update of time vals.  */
-    uint64_t system_timestamp;  /* Time, in nanosecs, since boot.    */
-    uint32_t tsc_to_nsec_mul;
-    int tsc_shift;
-    uint32_t version;
-};
 static struct timespec shadow_ts;
 static uint32_t shadow_ts_version;
 
-static struct shadow_time_info shadow;
-
-static inline int time_values_up_to_date(void)
-{
-    struct vcpu_time_info *src = &HYPERVISOR_shared_info->vcpu_info[0].time;
-
-    return shadow.version == src->version;
-}
+static struct vcpu_time_info shadow;
 
 static inline int wc_values_up_to_date(void)
 {
@@ -113,22 +99,7 @@ static unsigned long get_nsec_offset(void)
     rdtscll(now);
     delta = now - shadow.tsc_timestamp;
 
-    return scale_delta(delta, shadow.tsc_to_nsec_mul, shadow.tsc_shift);
-}
-
-static void get_time_values_from_xen(void)
-{
-    struct vcpu_time_info *src = &HYPERVISOR_shared_info->vcpu_info[0].time;
-
-    do {
-        shadow.version = src->version;
-        rmb();
-        shadow.tsc_timestamp     = src->tsc_timestamp;
-        shadow.system_timestamp  = src->system_time;
-        shadow.tsc_to_nsec_mul   = src->tsc_to_system_mul;
-        shadow.tsc_shift         = src->tsc_shift;
-        rmb();
-    } while ( (src->version & 1) | (shadow.version ^ src->version) );
+    return scale_delta(delta, shadow.tsc_to_system_mul, shadow.tsc_shift);
 }
 
 /*
@@ -138,19 +109,22 @@ static void get_time_values_from_xen(void)
  */
 uint64_t monotonic_clock(void)
 {
-    uint64_t time;
-    uint32_t local_time_version;
+    struct vcpu_time_info *src = &HYPERVISOR_shared_info->vcpu_info[0].time;
 
-    do {
-        local_time_version = shadow.version;
-        rmb();
-        time = shadow.system_timestamp + get_nsec_offset();
-        if ( !time_values_up_to_date() )
-            get_time_values_from_xen();
-        rmb();
-    } while ( local_time_version != shadow.version );
+    if ( shadow.version != src->version )
+    {
+        do {
+            shadow.version = src->version;
+            rmb();
+            shadow.tsc_timestamp     = src->tsc_timestamp;
+            shadow.system_time       = src->system_time;
+            shadow.tsc_to_system_mul = src->tsc_to_system_mul;
+            shadow.tsc_shift         = src->tsc_shift;
+            rmb();
+        } while ( (src->version & 1) || (shadow.version != src->version) );
+    }
 
-    return time;
+    return shadow.system_time + get_nsec_offset();
 }
 
 static void update_wallclock(void)
