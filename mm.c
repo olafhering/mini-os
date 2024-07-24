@@ -123,16 +123,11 @@ static void map_free(unsigned long first_page, unsigned long nr_pages)
 /* BINARY BUDDY ALLOCATOR */
 
 typedef struct chunk_head_st chunk_head_t;
-typedef struct chunk_tail_st chunk_tail_t;
 
 struct chunk_head_st {
     chunk_head_t  *next;
     chunk_head_t **pprev;
     int            level;
-};
-
-struct chunk_tail_st {
-    int level;
 };
 
 /* Linked lists of free chunks of different powers-of-two in size. */
@@ -151,7 +146,6 @@ static void init_page_allocator(unsigned long min, unsigned long max)
     unsigned long range;
     unsigned long r_min, r_max;
     chunk_head_t *ch;
-    chunk_tail_t *ct;
 
     printk("MM: Initialise page allocator for %lx(%lx)-%lx(%lx)\n",
            (u_long)to_virt(min), min, (u_long)to_virt(max), max);
@@ -215,14 +209,12 @@ static void init_page_allocator(unsigned long min, unsigned long max)
             ch = (chunk_head_t *)r_min;
             r_min += 1UL << i;
             range -= 1UL << i;
-            ct = (chunk_tail_t *)r_min - 1;
             i -= PAGE_SHIFT;
             ch->level       = i;
             ch->next        = free_head[i];
             ch->pprev       = &free_head[i];
             ch->next->pprev = &ch->next;
             free_head[i]    = ch;
-            ct->level       = i;
         }
     }
 
@@ -234,7 +226,6 @@ unsigned long alloc_pages(int order)
 {
     int i;
     chunk_head_t *alloc_ch, *spare_ch;
-    chunk_tail_t            *spare_ct;
 
     if ( !chk_free_pages(1UL << order) )
         goto no_memory;
@@ -261,14 +252,11 @@ unsigned long alloc_pages(int order)
         i--;
         spare_ch = (chunk_head_t *)((char *)alloc_ch +
                                     (1UL << (i + PAGE_SHIFT)));
-        spare_ct = (chunk_tail_t *)((char *)spare_ch +
-                                    (1UL << (i + PAGE_SHIFT))) - 1;
 
         /* Create new header for spare chunk. */
         spare_ch->level = i;
         spare_ch->next  = free_head[i];
         spare_ch->pprev = &free_head[i];
-        spare_ct->level = i;
 
         /* Link in the spare chunk. */
         spare_ch->next->pprev = &spare_ch->next;
@@ -289,7 +277,6 @@ EXPORT_SYMBOL(alloc_pages);
 void free_pages(void *pointer, int order)
 {
     chunk_head_t *freed_ch, *to_merge_ch;
-    chunk_tail_t *freed_ct;
     unsigned long mask;
 
     /* First free the chunk */
@@ -297,8 +284,6 @@ void free_pages(void *pointer, int order)
 
     /* Create free chunk */
     freed_ch = (chunk_head_t *)pointer;
-    freed_ct = (chunk_tail_t *)((char *)pointer +
-                                (1UL << (order + PAGE_SHIFT))) - 1;
 
     /* Now, possibly we can conseal chunks together */
     while ( order < FREELIST_SIZE )
@@ -320,9 +305,6 @@ void free_pages(void *pointer, int order)
             if ( allocated_in_map(virt_to_pfn(to_merge_ch)) ||
                  to_merge_ch->level != order )
                 break;
-
-            /* Merge with successor */
-            freed_ct = (chunk_tail_t *)((char *)to_merge_ch + mask) - 1;
         }
 
         /* We are committed to merging, unlink the chunk */
@@ -336,8 +318,6 @@ void free_pages(void *pointer, int order)
     freed_ch->level = order;
     freed_ch->next  = free_head[order];
     freed_ch->pprev = &free_head[order];
-    freed_ct->level = order;
-
     freed_ch->next->pprev = &freed_ch->next;
     free_head[order] = freed_ch;
 
