@@ -125,16 +125,30 @@ static void map_free(unsigned long first_page, unsigned long nr_pages)
 typedef struct chunk_head_st chunk_head_t;
 
 struct chunk_head_st {
-    chunk_head_t  *next;
-    chunk_head_t **pprev;
-    int            level;
+    chunk_head_t *next;
+    chunk_head_t *prev;
+    unsigned int  level;
 };
 
 /* Linked lists of free chunks of different powers-of-two in size. */
 #define FREELIST_SIZE ((sizeof(void *) << 3) - PAGE_SHIFT)
-static chunk_head_t *free_head[FREELIST_SIZE];
-static chunk_head_t  free_tail[FREELIST_SIZE];
-#define FREELIST_EMPTY(_l) ((_l)->next == NULL)
+static chunk_head_t  free_list[FREELIST_SIZE];
+#define FREELIST_EMPTY(_l) ((_l)->level == FREELIST_SIZE)
+
+static void enqueue_elem(chunk_head_t *elem, unsigned int level)
+{
+    elem->level = level;
+    elem->next = free_list[level].next;
+    elem->prev = &free_list[level];
+    elem->next->prev = elem;
+    free_list[level].next = elem;
+}
+
+static void dequeue_elem(chunk_head_t *elem)
+{
+    elem->prev->next = elem->next;
+    elem->next->prev = elem->prev;
+}
 
 /*
  * Initialise allocator, placing addresses [@min,@max] in free pool.
@@ -151,9 +165,9 @@ static void init_page_allocator(unsigned long min, unsigned long max)
            (u_long)to_virt(min), min, (u_long)to_virt(max), max);
     for ( i = 0; i < FREELIST_SIZE; i++ )
     {
-        free_head[i]       = &free_tail[i];
-        free_tail[i].pprev = &free_head[i];
-        free_tail[i].next  = NULL;
+        free_list[i].next  = &free_list[i];
+        free_list[i].prev  = &free_list[i];
+        free_list[i].level = FREELIST_SIZE;
     }
 
     min = round_pgup(min);
@@ -209,12 +223,7 @@ static void init_page_allocator(unsigned long min, unsigned long max)
             ch = (chunk_head_t *)r_min;
             r_min += 1UL << i;
             range -= 1UL << i;
-            i -= PAGE_SHIFT;
-            ch->level       = i;
-            ch->next        = free_head[i];
-            ch->pprev       = &free_head[i];
-            ch->next->pprev = &ch->next;
-            free_head[i]    = ch;
+            enqueue_elem(ch, i - PAGE_SHIFT);
         }
     }
 
@@ -233,17 +242,16 @@ unsigned long alloc_pages(int order)
     /* Find smallest order which can satisfy the request. */
     for ( i = order; i < FREELIST_SIZE; i++ )
     {
-        if ( !FREELIST_EMPTY(free_head[i]) )
+        if ( !FREELIST_EMPTY(free_list[i].next) )
             break;
     }
 
-    if ( i == FREELIST_SIZE )
+    if ( i >= FREELIST_SIZE )
         goto no_memory;
 
     /* Unlink a chunk. */
-    alloc_ch = free_head[i];
-    free_head[i] = alloc_ch->next;
-    alloc_ch->next->pprev = alloc_ch->pprev;
+    alloc_ch = free_list[i].next;
+    dequeue_elem(alloc_ch);
 
     /* We may have to break the chunk a number of times. */
     while ( i != order )
@@ -254,13 +262,7 @@ unsigned long alloc_pages(int order)
                                     (1UL << (i + PAGE_SHIFT)));
 
         /* Create new header for spare chunk. */
-        spare_ch->level = i;
-        spare_ch->next  = free_head[i];
-        spare_ch->pprev = &free_head[i];
-
-        /* Link in the spare chunk. */
-        spare_ch->next->pprev = &spare_ch->next;
-        free_head[i] = spare_ch;
+        enqueue_elem(spare_ch, i);
     }
 
     map_alloc(PHYS_PFN(to_phys(alloc_ch)), 1UL << order);
@@ -308,18 +310,13 @@ void free_pages(void *pointer, int order)
         }
 
         /* We are committed to merging, unlink the chunk */
-        *(to_merge_ch->pprev) = to_merge_ch->next;
-        to_merge_ch->next->pprev = to_merge_ch->pprev;
+        dequeue_elem(to_merge_ch);
 
         order++;
     }
 
     /* Link the new chunk */
-    freed_ch->level = order;
-    freed_ch->next  = free_head[order];
-    freed_ch->pprev = &free_head[order];
-    freed_ch->next->pprev = &freed_ch->next;
-    free_head[order] = freed_ch;
+    enqueue_elem(freed_ch, order);
 
 }
 EXPORT_SYMBOL(free_pages);
@@ -405,13 +402,11 @@ void sanity_check(void)
 
     for ( x = 0; x < FREELIST_SIZE; x++ )
     {
-        for ( head = free_head[x]; !FREELIST_EMPTY(head); head = head->next )
+        for ( head = free_list[x].next; !FREELIST_EMPTY(head);
+              head = head->next )
         {
             ASSERT(!allocated_in_map(virt_to_pfn(head)));
-            if ( head->next )
-                ASSERT(head->next->pprev == &head->next);
+            ASSERT(head->next->prev == head);
         }
-        if ( free_head[x] )
-            ASSERT(free_head[x]->pprev == &free_head[x]);
     }
 }
