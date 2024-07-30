@@ -395,6 +395,7 @@ void fini_mm(void)
 {
 }
 
+#ifdef CONFIG_TEST
 void sanity_check(void)
 {
     int x;
@@ -410,3 +411,4 @@ void sanity_check(void)
         }
     }
 }
+#endif

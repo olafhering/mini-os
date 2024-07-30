@@ -152,8 +152,10 @@ do {                                                           \
 
 #define BUG_ON(x) ASSERT(!(x))
 
+#ifdef CONFIG_TEST
 /* Consistency check as much as possible. */
 void sanity_check(void);
+#endif
 
 /* Get own domid. */
 domid_t get_domid(void);

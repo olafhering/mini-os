@@ -185,6 +185,7 @@ static void periodic_thread(void *p)
     {
         gettimeofday(&tv, NULL);
         printk("T(s=%ld us=%ld)\n", tv.tv_sec, tv.tv_usec);
+        sanity_check();
         msleep(1000);
     }
 }
