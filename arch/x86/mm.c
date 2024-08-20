@@ -523,57 +523,45 @@ static pgentry_t *get_pgt(unsigned long va)
  * return a valid PTE for a given virtual address. If PTE does not exist,
  * allocate page-table pages.
  */
+static int need_pgt_func(unsigned long va, unsigned int lvl, bool is_leaf,
+                         pgentry_t *pte, void *par)
+{
+    pgentry_t **result = par;
+    unsigned long pt_mfn;
+    unsigned long pt_pfn;
+    unsigned int idx;
+
+    if ( !is_leaf )
+        return 0;
+
+    if ( lvl == L1_FRAME || (*pte & _PAGE_PRESENT) )
+    {
+        /*
+         * The PTE is not addressing a page table (is_leaf is true). If we are
+         * either at the lowest level or we have a valid large page, we don't
+         * need to allocate a page table.
+         */
+        ASSERT(lvl == L1_FRAME || (*pte & _PAGE_PSE));
+        *result = pte;
+        return 1;
+    }
+
+    pt_mfn = virt_to_mfn(pte);
+    pt_pfn = virt_to_pfn(alloc_page());
+    if ( !pt_pfn )
+        return -1;
+    idx = idx_from_va_lvl(va, lvl);
+    new_pt_frame(&pt_pfn, pt_mfn, idx, lvl - 1);
+
+    return 0;
+}
+
 pgentry_t *need_pgt(unsigned long va)
 {
-    unsigned long pt_mfn;
-    pgentry_t *tab;
-    unsigned long pt_pfn;
-    unsigned offset;
+    pgentry_t *tab = NULL;
 
-    tab = pt_base;
-    pt_mfn = virt_to_mfn(pt_base);
-
-#if defined(__x86_64__)
-    offset = l4_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) )
-    {
-        pt_pfn = virt_to_pfn(alloc_page());
-        if ( !pt_pfn )
-            return NULL;
-        new_pt_frame(&pt_pfn, pt_mfn, offset, L3_FRAME);
-    }
-    ASSERT(tab[offset] & _PAGE_PRESENT);
-    pt_mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(pt_mfn);
-#endif
-    offset = l3_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) ) 
-    {
-        pt_pfn = virt_to_pfn(alloc_page());
-        if ( !pt_pfn )
-            return NULL;
-        new_pt_frame(&pt_pfn, pt_mfn, offset, L2_FRAME);
-    }
-    ASSERT(tab[offset] & _PAGE_PRESENT);
-    pt_mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(pt_mfn);
-    offset = l2_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) )
-    {
-        pt_pfn = virt_to_pfn(alloc_page());
-        if ( !pt_pfn )
-            return NULL;
-        new_pt_frame(&pt_pfn, pt_mfn, offset, L1_FRAME);
-    }
-    ASSERT(tab[offset] & _PAGE_PRESENT);
-    if ( tab[offset] & _PAGE_PSE )
-        return &tab[offset];
-
-    pt_mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(pt_mfn);
-
-    offset = l1_table_offset(va);
-    return &tab[offset];
+    walk_pt(va, va, need_pgt_func, &tab);
+    return tab;
 }
 EXPORT_SYMBOL(need_pgt);
 
