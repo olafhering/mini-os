@@ -402,92 +402,80 @@ static void build_pagetable(unsigned long *start_pfn, unsigned long *max_pfn)
  * Mark portion of the address space read only.
  */
 extern struct shared_info shared_info;
+
+struct set_readonly_par {
+    unsigned long etext;
+#ifdef CONFIG_PARAVIRT
+    unsigned int count;
+#endif
+};
+
+static int set_readonly_func(unsigned long va, unsigned int lvl, bool is_leaf,
+                             pgentry_t *pte, void *par)
+{
+    struct set_readonly_par *ro = par;
+
+    if ( !is_leaf )
+        return 0;
+
+    if ( va + (1UL << ptdata[lvl].shift) > ro->etext )
+        return 1;
+
+    if ( va == (unsigned long)&shared_info )
+    {
+        printk("skipped %lx\n", va);
+        return 0;
+    }
+
+#ifdef CONFIG_PARAVIRT
+    mmu_updates[ro->count].ptr = virt_to_mach(pte);
+    mmu_updates[ro->count].val = *pte & ~_PAGE_RW;
+    ro->count++;
+
+    if ( ro->count == L1_PAGETABLE_ENTRIES )
+    {
+         if ( HYPERVISOR_mmu_update(mmu_updates, ro->count, NULL,
+                                    DOMID_SELF) < 0 )
+             BUG();
+         ro->count = 0;
+    }
+#else
+    *pte &= ~_PAGE_RW;
+#endif
+
+    return 0;
+}
+
+#ifdef CONFIG_PARAVIRT
+static void tlb_flush(void)
+{
+    mmuext_op_t op = { .cmd = MMUEXT_TLB_FLUSH_ALL };
+    int count;
+
+    HYPERVISOR_mmuext_op(&op, 1, &count, DOMID_SELF);
+}
+#else
+static void tlb_flush(void)
+{
+    write_cr3((unsigned long)pt_base);
+}
+#endif
+
 static void set_readonly(void *text, void *etext)
 {
-    unsigned long start_address =
-        ((unsigned long) text + PAGE_SIZE - 1) & PAGE_MASK;
-    unsigned long end_address = (unsigned long) etext;
-    pgentry_t *tab = pt_base, page;
-    unsigned long mfn = pfn_to_mfn(virt_to_pfn(pt_base));
-    unsigned long offset;
-    unsigned long page_size = PAGE_SIZE;
-#ifdef CONFIG_PARAVIRT
-    int count = 0;
-    int rc;
-#endif
+    struct set_readonly_par setro = { .etext = (unsigned long)etext };
+    unsigned long start_address = PAGE_ALIGN((unsigned long)text);
 
     printk("setting %p-%p readonly\n", text, etext);
-
-    while ( start_address + page_size <= end_address )
-    {
-        tab = pt_base;
-        mfn = pfn_to_mfn(virt_to_pfn(pt_base));
-
-#if defined(__x86_64__)
-        offset = l4_table_offset(start_address);
-        page = tab[offset];
-        mfn = pte_to_mfn(page);
-        tab = to_virt(mfn_to_pfn(mfn) << PAGE_SHIFT);
-#endif
-        offset = l3_table_offset(start_address);
-        page = tab[offset];
-        mfn = pte_to_mfn(page);
-        tab = to_virt(mfn_to_pfn(mfn) << PAGE_SHIFT);
-        offset = l2_table_offset(start_address);        
-        if ( !(tab[offset] & _PAGE_PSE) )
-        {
-            page = tab[offset];
-            mfn = pte_to_mfn(page);
-            tab = to_virt(mfn_to_pfn(mfn) << PAGE_SHIFT);
-
-            offset = l1_table_offset(start_address);
-        }
-
-        if ( start_address != (unsigned long)&shared_info )
-        {
-#ifdef CONFIG_PARAVIRT
-            mmu_updates[count].ptr = 
-                ((pgentry_t)mfn << PAGE_SHIFT) + sizeof(pgentry_t) * offset;
-            mmu_updates[count].val = tab[offset] & ~_PAGE_RW;
-            count++;
-#else
-            tab[offset] &= ~_PAGE_RW;
-#endif
-        }
-        else
-            printk("skipped %lx\n", start_address);
-
-        start_address += page_size;
+    walk_pt(start_address, setro.etext, set_readonly_func, &setro);
 
 #ifdef CONFIG_PARAVIRT
-        if ( count == L1_PAGETABLE_ENTRIES || 
-             start_address + page_size > end_address )
-        {
-            rc = HYPERVISOR_mmu_update(mmu_updates, count, NULL, DOMID_SELF);
-            if ( rc < 0 )
-            {
-                printk("ERROR: set_readonly(): PTE could not be updated\n");
-                do_exit();
-            }
-            count = 0;
-        }
-#else
-        if ( start_address == (1UL << L2_PAGETABLE_SHIFT) )
-            page_size = 1UL << L2_PAGETABLE_SHIFT;
+    if ( setro.count &&
+         HYPERVISOR_mmu_update(mmu_updates, setro.count, NULL, DOMID_SELF) < 0)
+        BUG();
 #endif
-    }
 
-#ifdef CONFIG_PARAVIRT
-    {
-        mmuext_op_t op = {
-            .cmd = MMUEXT_TLB_FLUSH_ALL,
-        };
-        int count;
-        HYPERVISOR_mmuext_op(&op, 1, &count, DOMID_SELF);
-    }
-#else
-    write_cr3((unsigned long)pt_base);
-#endif
+    tlb_flush();
 }
 
 /*
