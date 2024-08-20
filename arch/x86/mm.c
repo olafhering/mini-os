@@ -125,20 +125,30 @@ void arch_mm_preinit(void *p)
 }
 #endif
 
+static const struct {
+    unsigned int shift;
+    unsigned int entries;
+    pgentry_t prot;
+} ptdata[PAGETABLE_LEVELS + 1] = {
+    { 0, 0, 0 },
+    { L1_PAGETABLE_SHIFT, L1_PAGETABLE_ENTRIES, L1_PROT },
+    { L2_PAGETABLE_SHIFT, L2_PAGETABLE_ENTRIES, L2_PROT },
+    { L3_PAGETABLE_SHIFT, L3_PAGETABLE_ENTRIES, L3_PROT },
+#if defined(__x86_64__)
+    { L4_PAGETABLE_SHIFT, L4_PAGETABLE_ENTRIES, L4_PROT },
+#endif
+};
+
+static inline unsigned int idx_from_va_lvl(unsigned long va, unsigned int lvl)
+{
+    return (va >> ptdata[lvl].shift) & (ptdata[lvl].entries - 1);
+}
+
 /*
  * Make pt_pfn a new 'level' page table frame and hook it into the page
  * table at offset in previous level MFN (pref_l_mfn). pt_pfn is a guest
  * PFN.
  */
-static pgentry_t pt_prot[PAGETABLE_LEVELS] = {
-    L1_PROT,
-    L2_PROT,
-    L3_PROT,
-#if defined(__x86_64__)
-    L4_PROT,
-#endif
-};
-
 static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn, 
                          unsigned long offset, unsigned long level)
 {   
@@ -170,7 +180,7 @@ static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn,
     mmu_updates[0].ptr = (tab[l2_table_offset(pt_page)] & PAGE_MASK) + 
         sizeof(pgentry_t) * l1_table_offset(pt_page);
     mmu_updates[0].val = (pgentry_t)pfn_to_mfn(*pt_pfn) << PAGE_SHIFT | 
-        (pt_prot[level - 1] & ~_PAGE_RW);
+        (ptdata[level].prot & ~_PAGE_RW);
     
     if ( (rc = HYPERVISOR_mmu_update(mmu_updates, 1, NULL, DOMID_SELF)) < 0 )
     {
@@ -183,7 +193,7 @@ static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn,
     mmu_updates[0].ptr =
         ((pgentry_t)prev_l_mfn << PAGE_SHIFT) + sizeof(pgentry_t) * offset;
     mmu_updates[0].val = (pgentry_t)pfn_to_mfn(*pt_pfn) << PAGE_SHIFT |
-        pt_prot[level];
+        ptdata[level + 1].prot;
 
     if ( (rc = HYPERVISOR_mmu_update(mmu_updates, 1, NULL, DOMID_SELF)) < 0 ) 
     {
@@ -192,7 +202,7 @@ static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn,
     }
 #else
     tab = mfn_to_virt(prev_l_mfn);
-    tab[offset] = (*pt_pfn << PAGE_SHIFT) | pt_prot[level];
+    tab[offset] = (*pt_pfn << PAGE_SHIFT) | ptdata[level + 1].prot;
 #endif
 
     *pt_pfn += 1;
@@ -201,6 +211,82 @@ static void new_pt_frame(unsigned long *pt_pfn, unsigned long prev_l_mfn,
 #ifdef CONFIG_PARAVIRT
 static mmu_update_t mmu_updates[L1_PAGETABLE_ENTRIES + 1];
 #endif
+
+/*
+ * Walk recursively through all PTEs calling a specified function. The function
+ * is allowed to change the PTE, the walker will follow the new value.
+ * The walk will cover the virtual address range [from_va .. to_va].
+ * The supplied function will be called with the following parameters:
+ * va: base virtual address of the area covered by the current PTE
+ * lvl: page table level of the PTE (1 = lowest level, PAGETABLE_LEVELS =
+ *      PTE in page table addressed by %cr3)
+ * is_leaf: true if PTE doesn't address another page table (it is either at
+ *          level 1, or invalid, or has its PSE bit set)
+ * pte: address of the PTE
+ * par: parameter, passed to walk_pt() by caller
+ * Return value of func() being non-zero will terminate walk_pt(), walk_pt()
+ * will return that value in this case, zero else.
+ */
+static int walk_pt(unsigned long from_va, unsigned long to_va,
+                   int (func)(unsigned long va, unsigned int lvl,
+                              bool is_leaf, pgentry_t *pte, void *par),
+                   void *par)
+{
+    unsigned int lvl = PAGETABLE_LEVELS;
+    unsigned int ptindex[PAGETABLE_LEVELS + 1];
+    unsigned long va = round_pgdown(from_va);
+    unsigned long va_lvl;
+    pgentry_t *tab[PAGETABLE_LEVELS + 1];
+    pgentry_t *pte;
+    bool is_leaf;
+    int ret;
+
+    /* Start at top level page table. */
+    tab[lvl] = pt_base;
+    ptindex[lvl] = idx_from_va_lvl(va, lvl);
+
+    while ( va < (to_va | (PAGE_SIZE - 1)) )
+    {
+        pte = tab[lvl] + ptindex[lvl];
+        is_leaf = (lvl == L1_FRAME) || (*pte & _PAGE_PSE) ||
+                  !(*pte & _PAGE_PRESENT);
+        va_lvl = va & ~((1UL << ptdata[lvl].shift) - 1);
+        ret = func(va_lvl, lvl, is_leaf, pte, par);
+        if ( ret )
+            return ret;
+
+        /* PTE might have been modified by func(), reevaluate leaf state. */
+        is_leaf = (lvl == L1_FRAME) || (*pte & _PAGE_PSE) ||
+                  !(*pte & _PAGE_PRESENT);
+
+        if ( is_leaf )
+        {
+            /* Reached a leaf PTE. Advance to next page. */
+            va += 1UL << ptdata[lvl].shift;
+            ptindex[lvl]++;
+
+            /* Check for the need to traverse up again. */
+            while ( ptindex[lvl] == ptdata[lvl].entries )
+            {
+                /* End of virtual address space? */
+                if ( lvl == PAGETABLE_LEVELS )
+                    return 0;
+                /* Reached end of current page table, one level up. */
+                lvl++;
+                ptindex[lvl]++;
+            }
+        }
+        else
+        {
+            /* Not a leaf, walk one level down. */
+            lvl--;
+            tab[lvl] = mfn_to_virt(pte_to_mfn(*pte));
+            ptindex[lvl] = idx_from_va_lvl(va, lvl);
+        }
+    }
+
+    return 0;
+}
 
 /*
  * Build the initial pagetable.
@@ -407,36 +493,29 @@ static void set_readonly(void *text, void *etext)
 /*
  * get the PTE for virtual address va if it exists. Otherwise NULL.
  */
+static int get_pgt_func(unsigned long va, unsigned int lvl, bool is_leaf,
+                        pgentry_t *pte, void *par)
+{
+    pgentry_t **result;
+
+    if ( !(*pte & _PAGE_PRESENT) && lvl > L1_FRAME )
+        return -1;
+
+    if ( lvl > L1_FRAME && !(*pte & _PAGE_PSE) )
+        return 0;
+
+    result = par;
+    *result = pte;
+
+    return 0;
+}
+
 static pgentry_t *get_pgt(unsigned long va)
 {
-    unsigned long mfn;
-    pgentry_t *tab;
-    unsigned offset;
+    pgentry_t *tab = NULL;
 
-    tab = pt_base;
-    mfn = virt_to_mfn(pt_base);
-
-#if defined(__x86_64__)
-    offset = l4_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) )
-        return NULL;
-    mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(mfn);
-#endif
-    offset = l3_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) )
-        return NULL;
-    mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(mfn);
-    offset = l2_table_offset(va);
-    if ( !(tab[offset] & _PAGE_PRESENT) )
-        return NULL;
-    if ( tab[offset] & _PAGE_PSE )
-        return &tab[offset];
-    mfn = pte_to_mfn(tab[offset]);
-    tab = mfn_to_virt(mfn);
-    offset = l1_table_offset(va);
-    return &tab[offset];
+    walk_pt(va, va, get_pgt_func, &tab);
+    return tab;
 }
 
 
