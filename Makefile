@@ -123,23 +123,39 @@ endif
 OBJS := $(filter-out $(OBJ_DIR)/lwip%.o $(LWO), $(OBJS))
 
 ifeq ($(libc),y)
-ifeq ($(CONFIG_XC),y)
+ifeq ($(CONFIG_LIBXENTOOLCORE),y)
 APP_LDLIBS += -L$(TOOLCORE_PATH) -whole-archive -lxentoolcore -no-whole-archive
 LIBS += $(TOOLCORE_PATH)/libxentoolcore.a
+endif
+ifeq ($(CONFIG_LIBXENTOOLLOG),y)
 APP_LDLIBS += -L$(TOOLLOG_PATH) -whole-archive -lxentoollog -no-whole-archive
 LIBS += $(TOOLLOG_PATH)/libxentoollog.a
+endif
+ifeq ($(CONFIG_LIBXENEVTCHN),y)
 APP_LDLIBS += -L$(EVTCHN_PATH) -whole-archive -lxenevtchn -no-whole-archive
 LIBS += $(EVTCHN_PATH)/libxenevtchn.a
+endif
+ifeq ($(CONFIG_LIBXENGNTTAB),y)
 APP_LDLIBS += -L$(GNTTAB_PATH) -whole-archive -lxengnttab -no-whole-archive
 LIBS += $(GNTTAB_PATH)/libxengnttab.a
+endif
+ifeq ($(CONFIG_LIBXENCALL),y)
 APP_LDLIBS += -L$(CALL_PATH) -whole-archive -lxencall -no-whole-archive
 LIBS += $(CALL_PATH)/libxencall.a
+endif
+ifeq ($(CONFIG_LIBXENFOREIGNMEMORY),y)
 APP_LDLIBS += -L$(FOREIGNMEMORY_PATH) -whole-archive -lxenforeignmemory -no-whole-archive
 LIBS += $(FOREIGNMEMORY_PATH)/libxenforeignmemory.a
+endif
+ifeq ($(CONFIG_LIBXENDEVICEMODEL),y)
 APP_LDLIBS += -L$(DEVICEMODEL_PATH) -whole-archive -lxendevicemodel -no-whole-archive
 LIBS += $(DEVICEMODEL_PATH)/libxendevicemodel.a
+endif
+ifeq ($(CONFIG_LIBXENGUEST),y)
 APP_LDLIBS += -L$(GUEST_PATH) -whole-archive -lxenguest -no-whole-archive
 LIBS += $(GUEST_PATH)/libxenguest.a
+endif
+ifeq ($(CONFIG_LIBXENCTRL),y)
 APP_LDLIBS += -L$(CTRL_PATH) -whole-archive -lxenctrl -no-whole-archive
 LIBS += $(CTRL_PATH)/libxenctrl.a
 endif
