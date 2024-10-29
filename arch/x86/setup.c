@@ -41,6 +41,7 @@
  * address of the shared_info structure, and things like that.
  */
 union start_info_union start_info_union;
+EXPORT_SYMBOL(start_info_union);
 #endif
 
 /*
