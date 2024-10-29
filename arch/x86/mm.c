@@ -55,6 +55,7 @@
 #endif
 
 unsigned long *phys_to_machine_mapping;
+EXPORT_SYMBOL(phys_to_machine_mapping);
 unsigned long mfn_zero;
 pgentry_t *pt_base;
 EXPORT_SYMBOL(pt_base);
