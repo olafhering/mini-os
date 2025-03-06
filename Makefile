@@ -159,6 +159,10 @@ ifeq ($(CONFIG_LIBXENCTRL),y)
 APP_LDLIBS += -L$(CTRL_PATH) -whole-archive -lxenctrl -no-whole-archive
 LIBS += $(CTRL_PATH)/libxenctrl.a
 endif
+ifeq ($(CONFIG_LIBXENMANAGE),y)
+APP_LDLIBS += -L$(MANAGE_PATH) -whole-archive -lxenmanage -no-whole-archive
+LIBS += $(MANAGE_PATH)/libxenmanage.a
+endif
 APP_LDLIBS += -lpci
 APP_LDLIBS += -lz
 APP_LDLIBS += -lm
