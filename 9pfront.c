@@ -85,6 +85,8 @@ struct file_9pfs {
 
 #define P9_QID_SIZE    13
 
+#define QID_TYPE_DIR   0x80     /* Applies to qid[0]. */
+
 struct p9_header {
     uint32_t size;
     uint8_t cmd;
@@ -950,6 +952,33 @@ static int write_9pfs(struct file *file, const void *buf, size_t nbytes)
     return ret;
 }
 
+static int fstat_9pfs(struct file *file, struct stat *buf)
+{
+    struct file_9pfs *f9pfs = file->filedata;
+    struct p9_stat stat;
+    int ret;
+
+    ret = p9_stat(f9pfs->dev, f9pfs->fid, &stat);
+    if ( ret )
+    {
+        errno = EIO;
+        return -1;
+    }
+
+    buf->st_mode = (stat.qid[0] == QID_TYPE_DIR) ? S_IFDIR : S_IFREG;
+    buf->st_mode |= stat.mode & 0777;
+    buf->st_atime = stat.atime;
+    buf->st_mtime = stat.mtime;
+    buf->st_ctime = stat.mtime;   /* Best available estimate. */
+    buf->st_size = stat.length;
+    buf->st_uid = stat.n_uid;
+    buf->st_gid = stat.n_gid;
+
+    free_stat(&stat);
+
+    return 0;
+}
+
 static int close_9pfs(struct file *file)
 {
     struct file_9pfs *f9pfs = file->filedata;
@@ -1296,6 +1325,7 @@ static const struct file_ops ops_9pfs = {
     .read = read_9pfs,
     .write = write_9pfs,
     .close = close_9pfs,
+    .fstat = fstat_9pfs,
 };
 
 __attribute__((constructor))
