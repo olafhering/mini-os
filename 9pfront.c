@@ -1326,6 +1326,7 @@ static const struct file_ops ops_9pfs = {
     .write = write_9pfs,
     .close = close_9pfs,
     .fstat = fstat_9pfs,
+    .lseek = lseek_default,
 };
 
 __attribute__((constructor))
