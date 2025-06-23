@@ -196,4 +196,19 @@ bool kexec_arch_need_analyze_shdrs(void)
 {
     return kernel_phys_entry == ~0UL;
 }
+
+static unsigned long kexec_param_loc;
+static unsigned int kexec_param_size;
+
+void kexec_set_param_loc(const char *cmdline)
+{
+    kexec_param_size = sizeof(struct hvm_start_info);
+    kexec_param_size += e820_entries * sizeof(struct hvm_memmap_table_entry);
+    kexec_param_size += strlen(cmdline) + 1;
+
+    kexec_last_addr = (kexec_last_addr + 7) & ~7UL;
+    kexec_param_loc = kexec_last_addr;
+    kexec_last_addr += kexec_param_size;
+    kexec_last_addr = round_pgup(kexec_last_addr);
+}
 #endif /* CONFIG_KEXEC */

@@ -42,4 +42,7 @@ int kexec_arch_analyze_phdr(elf_ehdr *ehdr, elf_phdr *phdr);
 int kexec_arch_analyze_shdr(elf_ehdr *ehdr, elf_shdr *shdr);
 bool kexec_arch_need_analyze_shdrs(void);
 
+/* Finalize parameter location and size. */
+void kexec_set_param_loc(const char *cmdline);
+
 #endif /* _KEXEC_H */
