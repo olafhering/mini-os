@@ -204,6 +204,7 @@ CONFIG-n += CONFIG_LIBXENGUEST
 CONFIG-n += CONFIG_LIBXENTOOLCORE
 CONFIG-n += CONFIG_LIBXENTOOLLOG
 CONFIG-n += CONFIG_LIBXENMANAGE
+CONFIG-n += CONFIG_KEXEC
 # Setting CONFIG_USE_XEN_CONSOLE copies all print output to the Xen emergency
 # console apart of standard dom0 handled console.
 CONFIG-n += CONFIG_USE_XEN_CONSOLE

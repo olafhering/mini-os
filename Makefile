@@ -51,6 +51,7 @@ src-y += gntmap.c
 src-y += gnttab.c
 src-y += hypervisor.c
 src-y += kernel.c
+src-$(CONFIG_KEXEC) += kexec.c
 src-y += lock.c
 src-y += main.c
 src-y += mm.c

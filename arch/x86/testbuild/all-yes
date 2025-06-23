@@ -19,3 +19,5 @@ CONFIG_BALLOON = y
 CONFIG_USE_XEN_CONSOLE = y
 # The following are special: they need support from outside
 CONFIG_LWIP = n
+# KEXEC not implemented for PARAVIRT
+CONFIG_KEXEC = n
