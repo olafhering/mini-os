@@ -49,4 +49,9 @@ void kexec_set_param_loc(const char *cmdline);
 int kexec_get_entry(const char *cmdline);
 void kexec_get_entry_undo(void);
 
+/* Move used pages away from new kernel area. */
+int kexec_move_used_pages(unsigned long boundary, unsigned long kernel,
+                          unsigned long kernel_size);
+void kexec_move_used_pages_undo(void);
+
 #endif /* _KEXEC_H */

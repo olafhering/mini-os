@@ -42,6 +42,7 @@
 #include <mini-os/paravirt.h>
 #include <mini-os/types.h>
 #include <mini-os/lib.h>
+#include <mini-os/kexec.h>
 #include <mini-os/xmalloc.h>
 #include <mini-os/e820.h>
 #include <xen/memory.h>
@@ -923,3 +924,128 @@ unsigned long map_frame_virt(unsigned long mfn)
     return addr;
 }
 EXPORT_SYMBOL(map_frame_virt);
+
+#ifdef CONFIG_KEXEC
+static unsigned long kexec_gdt;
+static unsigned long kexec_idt;
+
+static int move_pt(unsigned long va, unsigned int lvl, bool is_leaf,
+                   pgentry_t *pte, void *par)
+{
+    unsigned long boundary_pfn = *(unsigned long *)par;
+    unsigned long pfn;
+    void *old_pg, *new_pg;
+
+    if ( is_leaf )
+        return 0;
+
+    pfn = (lvl == PAGETABLE_LEVELS + 1) ? PHYS_PFN(*(unsigned long *)pte)
+                                        : pte_to_mfn(*pte);
+    if ( pfn >= boundary_pfn )
+        return 0;
+
+    new_pg = (void *)alloc_page();
+    if ( !new_pg )
+        return ENOMEM;
+    old_pg = pfn_to_virt(pfn);
+    memcpy(new_pg, old_pg, PAGE_SIZE);
+    if ( lvl == PAGETABLE_LEVELS + 1 )
+        *(pgentry_t **)pte = new_pg;
+    else
+        *pte = ((unsigned long)new_pg & PAGE_MASK) | ptdata[lvl].prot;
+
+    tlb_flush();
+
+    free_page(old_pg);
+
+    return 0;
+}
+
+static int move_leaf(unsigned long va, unsigned int lvl, bool is_leaf,
+                     pgentry_t *pte, void *par)
+{
+    unsigned long boundary_pfn = *(unsigned long *)par;
+    unsigned long pfn;
+    void *old_pg, *new_pg;
+
+    if ( !is_leaf )
+        return 0;
+
+    /* No large page support, all pages must be valid. */
+    if ( (*pte & _PAGE_PSE) || !(*pte & _PAGE_PRESENT) )
+        return EINVAL;
+
+    pfn = pte_to_mfn(*pte);
+    if ( pfn >= boundary_pfn )
+        return 0;
+
+    new_pg = (void *)alloc_page();
+    if ( !new_pg )
+        return ENOMEM;
+    old_pg = pfn_to_virt(pfn);
+    memcpy(new_pg, old_pg, PAGE_SIZE);
+    *pte = ((unsigned long)new_pg & PAGE_MASK) | ptdata[lvl].prot;
+
+    invlpg(va);
+
+    free_page(old_pg);
+
+    return 0;
+}
+
+int kexec_move_used_pages(unsigned long boundary, unsigned long kernel,
+                          unsigned long kernel_size)
+{
+    int ret;
+    unsigned long boundary_pfn = PHYS_PFN(boundary);
+
+    kexec_gdt = alloc_page();
+    if ( !kexec_gdt )
+        return ENOMEM;
+    memcpy((char *)kexec_gdt, &gdt, sizeof(gdt));
+    gdt_ptr.base = kexec_gdt;
+    asm volatile("lgdt %0" : : "m" (gdt_ptr));
+
+    kexec_idt = alloc_page();
+    if ( !kexec_idt )
+        return ENOMEM;
+    memcpy((char *)kexec_idt, &idt, sizeof(idt));
+    idt_ptr.base = kexec_idt;
+    asm volatile("lidt %0" : : "m" (idt_ptr));
+
+    /* Top level page table needs special handling. */
+    ret = move_pt(0, PAGETABLE_LEVELS + 1, false, (pgentry_t *)(&pt_base),
+                  &boundary_pfn);
+    if ( ret )
+        return ret;
+    ret = walk_pt(0, ~0UL, move_pt, &boundary_pfn);
+    if ( ret )
+        return ret;
+
+    /* Move new kernel image pages. */
+    ret = walk_pt(kernel, kernel + kernel_size - 1, move_leaf, &boundary_pfn);
+    if ( ret )
+        return ret;
+
+    return 0;
+}
+
+void kexec_move_used_pages_undo(void)
+{
+    if ( kexec_gdt )
+    {
+        gdt_ptr.base = (unsigned long)&gdt;
+        asm volatile("lgdt %0" : : "m" (gdt_ptr));
+        free_page((void *)kexec_gdt);
+        kexec_gdt = 0;
+    }
+
+    if ( kexec_idt )
+    {
+        idt_ptr.base = (unsigned long)&idt;
+        asm volatile("lidt %0" : : "m" (idt_ptr));
+        free_page((void *)kexec_idt);
+        kexec_idt = 0;
+    }
+}
+#endif
