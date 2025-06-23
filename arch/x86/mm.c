@@ -529,7 +529,8 @@ void change_readonly(bool readonly)
 #endif
     }
 
-    printk("setting %p-%p readonly\n", &_text, &_erodata);
+    printk("setting %p-%p %s\n", &_text, &_erodata,
+           readonly ? "readonly" : "writable");
     walk_pt(start_address, ro.etext, change_readonly_func, &ro);
 
 #ifdef CONFIG_PARAVIRT

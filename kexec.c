@@ -183,6 +183,8 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
         goto err;
     }
 
+    change_readonly(false);
+
     ret = kexec_move_used_pages(kexec_last_addr, (unsigned long)kernel,
                                 kernel_size);
     if ( ret )
@@ -192,6 +194,7 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
     ret = ENOSYS;
 
  err:
+    change_readonly(true);
     unreserve_memory_below();
     kexec_move_used_pages_undo();
     kexec_get_entry_undo();
