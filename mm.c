@@ -230,6 +230,84 @@ static void init_page_allocator(unsigned long min, unsigned long max)
     mm_alloc_bitmap_remap();
 }
 
+#ifdef CONFIG_KEXEC
+static chunk_head_t *reserved_chunks;
+static unsigned long boundary_pfn;
+
+static void free_pages_below(void *pointer, unsigned int order)
+{
+    unsigned long pfn_s, pfn;
+    chunk_head_t *ch = pointer;
+
+    pfn_s = virt_to_pfn(ch);
+
+    if ( pfn_s + (1UL << order) <= boundary_pfn )
+    {
+        /* Put complete chunk into reserved list. */
+        ch->level = order;
+        ch->next = reserved_chunks;
+        reserved_chunks = ch;
+    }
+    else
+    {
+        /* Put pages below boundary into reserved list. */
+        for ( pfn = pfn_s; pfn < boundary_pfn; pfn++ )
+        {
+            chunk_head_t *ch_res = pfn_to_virt(pfn);
+
+            ch_res->level = 0;
+            ch_res->next = reserved_chunks;
+            reserved_chunks = ch_res;
+        }
+
+        /* Return pages above boundary to free pool again. */
+        for ( ; pfn < pfn_s + (1UL << order); pfn++ )
+            free_pages(pfn_to_virt(pfn), 0);
+    }
+}
+
+void reserve_memory_below(unsigned long boundary)
+{
+    unsigned long pfn;
+    unsigned int order;
+    chunk_head_t *ch;
+
+    ASSERT(!boundary_pfn);
+    boundary_pfn = PHYS_PFN(boundary);
+
+    for ( order = 0; order < FREELIST_SIZE; order++ )
+    {
+        for ( ch = free_list[order].next; !FREELIST_EMPTY(ch); ch = ch->next )
+        {
+            pfn = virt_to_pfn(ch);
+            if ( pfn >= boundary_pfn )
+                continue;
+
+            /* Dequeue from this level, at least parts will be reserved. */
+            dequeue_elem(ch);
+            /* Mark all as allocated, pieces above boundary will be returned. */
+            map_alloc(pfn, 1UL << ch->level);
+
+            free_pages_below(ch, ch->level);
+        }
+    }
+}
+
+void unreserve_memory_below(void)
+{
+    chunk_head_t *ch;
+
+    boundary_pfn = 0;
+
+    while ( reserved_chunks )
+    {
+        ch = reserved_chunks;
+        reserved_chunks = ch->next;
+        free_pages(ch, ch->level);
+    }
+}
+#endif /* CONFIG_KEXEC */
+
 /* Allocate 2^@order contiguous pages. Returns a VIRTUAL address. */
 unsigned long alloc_pages(int order)
 {
@@ -279,10 +357,19 @@ EXPORT_SYMBOL(alloc_pages);
 void free_pages(void *pointer, int order)
 {
     chunk_head_t *freed_ch, *to_merge_ch;
+    unsigned long pfn = virt_to_pfn(pointer);
     unsigned long mask;
 
+#ifdef CONFIG_KEXEC
+    if ( pfn < boundary_pfn )
+    {
+        free_pages_below(pointer, order);
+        return;
+    }
+#endif
+
     /* First free the chunk */
-    map_free(virt_to_pfn(pointer), 1UL << order);
+    map_free(pfn, 1UL << order);
 
     /* Create free chunk */
     freed_ch = (chunk_head_t *)pointer;

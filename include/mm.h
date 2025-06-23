@@ -57,6 +57,11 @@ unsigned long alloc_pages(int order);
 void free_pages(void *pointer, int order);
 #define free_page(p)    free_pages(p, 0)
 
+#ifdef CONFIG_KEXEC
+void reserve_memory_below(unsigned long boundary);
+void unreserve_memory_below(void);
+#endif
+
 static __inline__ int get_order(unsigned long size)
 {
     int order;

@@ -174,6 +174,11 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
 
     kexec_set_param_loc(cmdline);
 
+    reserve_memory_below(kexec_last_addr);
+
+    /* Error exit. */
+    unreserve_memory_below();
+
     return ENOSYS;
 }
 EXPORT_SYMBOL(kexec);
