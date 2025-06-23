@@ -405,17 +405,19 @@ static void build_pagetable(unsigned long *start_pfn, unsigned long *max_pfn)
  */
 extern struct shared_info shared_info;
 
-struct set_readonly_par {
+struct change_readonly_par {
     unsigned long etext;
 #ifdef CONFIG_PARAVIRT
     unsigned int count;
 #endif
+    bool readonly;
 };
 
-static int set_readonly_func(unsigned long va, unsigned int lvl, bool is_leaf,
-                             pgentry_t *pte, void *par)
+static int change_readonly_func(unsigned long va, unsigned int lvl,
+                                bool is_leaf, pgentry_t *pte, void *par)
 {
-    struct set_readonly_par *ro = par;
+    struct change_readonly_par *ro = par;
+    pgentry_t newval;
 
     if ( !is_leaf )
         return 0;
@@ -429,9 +431,11 @@ static int set_readonly_func(unsigned long va, unsigned int lvl, bool is_leaf,
         return 0;
     }
 
+    newval = ro->readonly ? (*pte & ~_PAGE_RW) : (*pte | _PAGE_RW);
+
 #ifdef CONFIG_PARAVIRT
     mmu_updates[ro->count].ptr = virt_to_mach(pte);
-    mmu_updates[ro->count].val = *pte & ~_PAGE_RW;
+    mmu_updates[ro->count].val = newval;
     ro->count++;
 
     if ( ro->count == L1_PAGETABLE_ENTRIES )
@@ -442,7 +446,7 @@ static int set_readonly_func(unsigned long va, unsigned int lvl, bool is_leaf,
          ro->count = 0;
     }
 #else
-    *pte &= ~_PAGE_RW;
+    *pte = newval;
 #endif
 
     return 0;
@@ -462,23 +466,6 @@ static void tlb_flush(void)
     write_cr3((unsigned long)pt_base);
 }
 #endif
-
-static void set_readonly(void *text, void *etext)
-{
-    struct set_readonly_par setro = { .etext = (unsigned long)etext };
-    unsigned long start_address = PAGE_ALIGN((unsigned long)text);
-
-    printk("setting %p-%p readonly\n", text, etext);
-    walk_pt(start_address, setro.etext, set_readonly_func, &setro);
-
-#ifdef CONFIG_PARAVIRT
-    if ( setro.count &&
-         HYPERVISOR_mmu_update(mmu_updates, setro.count, NULL, DOMID_SELF) < 0)
-        BUG();
-#endif
-
-    tlb_flush();
-}
 
 /*
  * get the PTE for virtual address va if it exists. Otherwise NULL.
@@ -508,6 +495,51 @@ static pgentry_t *get_pgt(unsigned long va)
     return tab;
 }
 
+void change_readonly(bool readonly)
+{
+    struct change_readonly_par ro = {
+        .etext = (unsigned long)&_erodata,
+        .readonly = readonly,
+    };
+    unsigned long start_address = PAGE_ALIGN((unsigned long)&_text);
+#ifdef CONFIG_PARAVIRT
+    pte_t nullpte = { };
+    int rc;
+#else
+    pgentry_t *pgt = get_pgt((unsigned long)&_text);
+#endif
+
+    if ( readonly )
+    {
+#ifdef CONFIG_PARAVIRT
+        if ( (rc = HYPERVISOR_update_va_mapping(0, nullpte, UVMF_INVLPG)) )
+            printk("Unable to unmap NULL page. rc=%d\n", rc);
+#else
+        *pgt = 0;
+        invlpg((unsigned long)&_text);
+#endif
+    }
+    else
+    {
+#ifdef CONFIG_PARAVIRT
+        /* No kexec support with PARAVIRT. */
+        BUG();
+#else
+        *pgt = L1_PROT;
+#endif
+    }
+
+    printk("setting %p-%p readonly\n", &_text, &_erodata);
+    walk_pt(start_address, ro.etext, change_readonly_func, &ro);
+
+#ifdef CONFIG_PARAVIRT
+    if ( ro.count &&
+         HYPERVISOR_mmu_update(mmu_updates, ro.count, NULL, DOMID_SELF) < 0)
+        BUG();
+#endif
+
+    tlb_flush();
+}
 
 /*
  * return a valid PTE for a given virtual address. If PTE does not exist,
@@ -789,31 +821,6 @@ int unmap_frames(unsigned long va, unsigned long num_frames)
 }
 EXPORT_SYMBOL(unmap_frames);
 
-/*
- * Clear some of the bootstrap memory
- */
-static void clear_bootstrap(void)
-{
-#ifdef CONFIG_PARAVIRT
-    pte_t nullpte = { };
-    int rc;
-#else
-    pgentry_t *pgt;
-#endif
-
-    /* Use first page as the CoW zero page */
-    memset(&_text, 0, PAGE_SIZE);
-    mfn_zero = virt_to_mfn((unsigned long) &_text);
-#ifdef CONFIG_PARAVIRT
-    if ( (rc = HYPERVISOR_update_va_mapping(0, nullpte, UVMF_INVLPG)) )
-        printk("Unable to unmap NULL page. rc=%d\n", rc);
-#else
-    pgt = get_pgt((unsigned long)&_text);
-    *pgt = 0;
-    invlpg((unsigned long)&_text);
-#endif
-}
-
 #ifdef CONFIG_PARAVIRT
 void p2m_chk_pfn(unsigned long pfn)
 {
@@ -884,8 +891,12 @@ void arch_init_mm(unsigned long* start_pfn_p, unsigned long* max_pfn_p)
     printk("    max_pfn: %lx\n", max_pfn);
 
     build_pagetable(&start_pfn, &max_pfn);
-    clear_bootstrap();
-    set_readonly(&_text, &_erodata);
+
+    /* Prepare page 0 as CoW page. */
+    memset(&_text, 0, PAGE_SIZE);
+    mfn_zero = virt_to_mfn((unsigned long)&_text);
+
+    change_readonly(true);
 
     *start_pfn_p = start_pfn;
     *max_pfn_p = max_pfn;

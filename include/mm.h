@@ -25,6 +25,7 @@
 #ifndef _MM_H_
 #define _MM_H_
 
+#include <stdbool.h>
 #if defined(__i386__)
 #include <xen/arch-x86_32.h>
 #elif defined(__x86_64__)
@@ -91,5 +92,7 @@ extern unsigned long heap, brk, heap_mapped, heap_end;
 
 int free_physical_pages(xen_pfn_t *mfns, int n);
 void fini_mm(void);
+
+void change_readonly(bool readonly);
 
 #endif /* _MM_H_ */
