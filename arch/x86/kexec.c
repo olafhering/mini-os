@@ -28,7 +28,14 @@
 
 #include <mini-os/os.h>
 #include <mini-os/lib.h>
+#include <mini-os/e820.h>
+#include <mini-os/err.h>
 #include <mini-os/kexec.h>
+
+#include <xen/elfnote.h>
+#include <xen/arch-x86/hvm/start_info.h>
+
+static unsigned long kernel_phys_entry = ~0UL;
 
 /*
  * Final stage of kexec. Copies all data to the final destinations, zeroes
@@ -104,4 +111,89 @@ void do_kexec(void *kexec_page)
         : :"m" (stack), "m" (actions), "m" (phys), "m" (final));
 }
 
+bool kexec_chk_arch(elf_ehdr *ehdr)
+{
+    return ehdr->e32.e_machine == EM_386 || ehdr->e32.e_machine == EM_X86_64;
+}
+
+static unsigned int note_data_sz(unsigned int sz)
+{
+    return (sz + 3) & ~3;
+}
+
+static void read_note_entry(elf_ehdr *ehdr, void *start, unsigned int len)
+{
+    elf_note *note = start;
+    unsigned int off, note_len, namesz, descsz;
+    char *val;
+
+    for ( off = 0; off < len; off += note_len )
+    {
+        namesz = note_data_sz(note_val(ehdr, note, namesz));
+        descsz = note_data_sz(note_val(ehdr, note, descsz));
+        val = note_val(ehdr, note, data);
+        note_len = val - (char *)note + namesz + descsz;
+
+        if ( !strncmp(val, "Xen", namesz) &&
+             note_val(ehdr, note, type) == XEN_ELFNOTE_PHYS32_ENTRY )
+        {
+            val += namesz;
+            switch ( note_val(ehdr, note, descsz) )
+            {
+            case 1:
+                kernel_phys_entry = *(uint8_t *)val;
+                return;
+            case 2:
+                kernel_phys_entry = *(uint16_t *)val;
+                return;
+            case 4:
+                kernel_phys_entry = *(uint32_t *)val;
+                return;
+            case 8:
+                kernel_phys_entry = *(uint64_t *)val;
+                return;
+            default:
+                break;
+            }
+        }
+
+        note = elf_ptr_add(note, note_len);
+    }
+}
+
+int kexec_arch_analyze_phdr(elf_ehdr *ehdr, elf_phdr *phdr)
+{
+    void *notes_start;
+    unsigned int notes_len;
+
+    if ( phdr_val(ehdr, phdr, p_type) != PT_NOTE || kernel_phys_entry != ~0UL )
+        return 0;
+
+    notes_start = elf_ptr_add(ehdr, phdr_val(ehdr, phdr, p_offset));
+    notes_len = phdr_val(ehdr, phdr, p_filesz);
+    read_note_entry(ehdr, notes_start, notes_len);
+
+    return 0;
+}
+
+int kexec_arch_analyze_shdr(elf_ehdr *ehdr, elf_shdr *shdr)
+{
+    void *notes_start;
+    unsigned int notes_len;
+
+    if ( shdr_val(ehdr, shdr, sh_type) != SHT_NOTE ||
+         kernel_phys_entry != ~0UL )
+        return 0;
+
+    notes_start = elf_ptr_add(ehdr, shdr_val(ehdr, shdr, sh_offset));
+    notes_len = shdr_val(ehdr, shdr, sh_size);
+    read_note_entry(ehdr, notes_start, notes_len);
+
+    return 0;
+}
+
+bool kexec_arch_need_analyze_shdrs(void)
+{
+    return kernel_phys_entry == ~0UL;
+}
 #endif /* CONFIG_KEXEC */

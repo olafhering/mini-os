@@ -31,6 +31,9 @@
 #include <errno.h>
 #include <mini-os/os.h>
 #include <mini-os/lib.h>
+#include <mini-os/console.h>
+#include <mini-os/elf.h>
+#include <mini-os/err.h>
 #include <mini-os/kexec.h>
 
 /*
@@ -53,8 +56,122 @@
  * - The new kernel is activated.
  */
 
+unsigned long kexec_last_addr;
+
+static int analyze_phdrs(elf_ehdr *ehdr)
+{
+    elf_phdr *phdr;
+    unsigned int n_hdr, i;
+    unsigned long paddr, offset, filesz, memsz;
+    int ret;
+
+    phdr = elf_ptr_add(ehdr, ehdr_val(ehdr, e_phoff));
+    n_hdr = ehdr_val(ehdr, e_phnum);
+    for ( i = 0; i < n_hdr; i++ )
+    {
+        ret = kexec_arch_analyze_phdr(ehdr, phdr);
+        if ( ret )
+            return ret;
+
+        if ( phdr_val(ehdr, phdr, p_type) == PT_LOAD &&
+             (phdr_val(ehdr, phdr, p_flags) & (PF_X | PF_W | PF_R)) )
+        {
+            paddr = phdr_val(ehdr, phdr, p_paddr);
+            offset = phdr_val(ehdr, phdr, p_offset);
+            filesz = phdr_val(ehdr, phdr, p_filesz);
+            memsz = phdr_val(ehdr, phdr, p_memsz);
+            if ( filesz > 0 )
+            {
+                ret = kexec_add_action(KEXEC_COPY, to_virt(paddr),
+                                       (char *)ehdr + offset, filesz);
+                if ( ret )
+                    return ret;
+            }
+            if ( memsz > filesz )
+            {
+                ret = kexec_add_action(KEXEC_ZERO, to_virt(paddr + filesz),
+                                       NULL, memsz - filesz);
+                if ( ret )
+                    return ret;
+            }
+            if ( paddr + memsz > kexec_last_addr )
+                kexec_last_addr = paddr + memsz;
+        }
+
+        phdr = elf_ptr_add(phdr, ehdr_val(ehdr, e_phentsize));
+    }
+
+    return 0;
+}
+
+static int analyze_shdrs(elf_ehdr *ehdr)
+{
+    elf_shdr *shdr;
+    unsigned int n_hdr, i;
+    int ret;
+
+    if ( !kexec_arch_need_analyze_shdrs() )
+        return 0;
+
+    shdr = elf_ptr_add(ehdr, ehdr_val(ehdr, e_shoff));
+    n_hdr = ehdr_val(ehdr, e_shnum);
+    for ( i = 0; i < n_hdr; i++ )
+    {
+        ret = kexec_arch_analyze_shdr(ehdr, shdr);
+        if ( ret )
+            return ret;
+
+        shdr = elf_ptr_add(shdr, ehdr_val(ehdr, e_shentsize));
+    }
+
+    return 0;
+}
+
+static int analyze_kernel(void *kernel, unsigned long size)
+{
+    elf_ehdr *ehdr = kernel;
+    int ret;
+
+    if ( !IS_ELF(ehdr->e32) )
+    {
+        printk("kexec: new kernel not an ELF file\n");
+        return ENOEXEC;
+    }
+    if ( ehdr->e32.e_ident[EI_DATA] != ELFDATA2LSB )
+    {
+        printk("kexec: ELF file of new kernel is big endian\n");
+        return ENOEXEC;
+    }
+    if ( !elf_is_32bit(ehdr) && !elf_is_64bit(ehdr) )
+    {
+        printk("kexec: ELF file of new kernel is neither 32 nor 64 bit\n");
+        return ENOEXEC;
+    }
+    if ( !kexec_chk_arch(ehdr) )
+    {
+        printk("kexec: ELF file of new kernel is not compatible with arch\n");
+        return ENOEXEC;
+    }
+
+    ret = analyze_phdrs(ehdr);
+    if ( ret )
+        return ret;
+
+    ret = analyze_shdrs(ehdr);
+    if ( ret )
+        return ret;
+
+    return 0;
+}
+
 int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
 {
+    int ret;
+
+    ret = analyze_kernel(kernel, kernel_size);
+    if ( ret )
+        return ret;
+
     return ENOSYS;
 }
 EXPORT_SYMBOL(kexec);
