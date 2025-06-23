@@ -58,6 +58,14 @@ SECTIONS
         }
         PROVIDE (__fini_array_end = .);
 
+#if defined(CONFIG_KEXEC)
+        PROVIDE (__kexec_array_start = .);
+        .kexec_array : {
+                *(.kexec_array)
+        }
+        PROVIDE (__kexec_array_end = .);
+#endif
+
         .ctors : {
                 __CTOR_LIST__ = .;
                 *(.ctors)

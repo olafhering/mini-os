@@ -18,6 +18,12 @@ struct kexec_action {
 
 extern char _kexec_start[], _kexec_end[];
 extern struct kexec_action kexec_actions[KEXEC_MAX_ACTIONS];
+extern unsigned long __kexec_array_start[], __kexec_array_end[];
+
+typedef int(*kexeccall_t)(bool undo);
+#define kexec_call(func)                                                   \
+    static kexeccall_t __kexeccall_##func __attribute__((__used__))        \
+                       __attribute__((__section__(".kexec_array"))) = func
 
 extern unsigned long kexec_last_addr;
 

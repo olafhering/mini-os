@@ -167,6 +167,7 @@ static int analyze_kernel(void *kernel, unsigned long size)
 int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
 {
     int ret;
+    unsigned long *func;
 
     ret = analyze_kernel(kernel, kernel_size);
     if ( ret )
@@ -189,6 +190,18 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
                                 kernel_size);
     if ( ret )
         goto err;
+
+    for ( func = __kexec_array_start; func < __kexec_array_end; func++ )
+    {
+        ret = ((kexeccall_t)(*func))(false);
+        if ( ret )
+        {
+            for ( func--; func >= __kexec_array_start; func-- )
+                ((kexeccall_t)(*func))(true);
+
+            goto err;
+        }
+    }
 
     /* Error exit. */
     ret = ENOSYS;
