@@ -45,4 +45,8 @@ bool kexec_arch_need_analyze_shdrs(void);
 /* Finalize parameter location and size. */
 void kexec_set_param_loc(const char *cmdline);
 
+/* Get entry point and parameter of new kernel. */
+int kexec_get_entry(const char *cmdline);
+void kexec_get_entry_undo(void);
+
 #endif /* _KEXEC_H */

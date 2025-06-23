@@ -199,6 +199,7 @@ bool kexec_arch_need_analyze_shdrs(void)
 
 static unsigned long kexec_param_loc;
 static unsigned int kexec_param_size;
+static unsigned long kexec_param_mem;
 
 void kexec_set_param_loc(const char *cmdline)
 {
@@ -210,5 +211,62 @@ void kexec_set_param_loc(const char *cmdline)
     kexec_param_loc = kexec_last_addr;
     kexec_last_addr += kexec_param_size;
     kexec_last_addr = round_pgup(kexec_last_addr);
+}
+
+int kexec_get_entry(const char *cmdline)
+{
+    struct hvm_start_info *info;
+    struct hvm_memmap_table_entry *mmap;
+    unsigned int order;
+    unsigned int i;
+
+    if ( kernel_phys_entry == ~0UL )
+        return ENOEXEC;
+
+    order = get_order(kexec_param_size);
+
+    kexec_param_mem = alloc_pages(order);
+    if ( !kexec_param_mem )
+        return ENOMEM;
+
+    info = (struct hvm_start_info *)kexec_param_mem;
+    memset(info, 0, sizeof(*info));
+    info->magic = XEN_HVM_START_MAGIC_VALUE;
+    info->version = 1;
+    info->cmdline_paddr = kexec_param_mem + sizeof(*info) +
+                          e820_entries * sizeof(struct hvm_memmap_table_entry);
+    info->memmap_paddr = kexec_param_mem + sizeof(*info);
+    info->memmap_entries = e820_entries;
+
+    mmap = (struct hvm_memmap_table_entry *)(info + 1);
+    for ( i = 0; i < e820_entries; i++ )
+    {
+        mmap->addr = e820_map[i].addr;
+        mmap->size = e820_map[i].size;
+        mmap->type = e820_map[i].type;
+        mmap++;
+    }
+
+    strcpy((char *)mmap, cmdline);
+
+    if ( kexec_add_action(KEXEC_COPY, to_virt(kexec_param_loc), info,
+                          kexec_param_size) )
+        return ENOSPC;
+
+    /* The call of the new kernel happens via the physical address! */
+    if ( kexec_add_action(KEXEC_CALL, (void *)kernel_phys_entry,
+                          (void *)kexec_param_loc, 0) )
+        return ENOSPC;
+
+    return 0;
+}
+
+void kexec_get_entry_undo(void)
+{
+    if ( kexec_param_mem )
+    {
+        free_pages((void *)kexec_param_mem, get_order(kexec_param_size));
+        kexec_param_mem = 0;
+    }
 }
 #endif /* CONFIG_KEXEC */

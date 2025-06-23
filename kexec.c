@@ -176,10 +176,21 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
 
     reserve_memory_below(kexec_last_addr);
 
-    /* Error exit. */
-    unreserve_memory_below();
+    ret = kexec_get_entry(cmdline);
+    if ( ret )
+    {
+        printk("kexec: ELF file of new kernel has no valid entry point\n");
+        goto err;
+    }
 
-    return ENOSYS;
+    /* Error exit. */
+    ret = ENOSYS;
+
+ err:
+    unreserve_memory_below();
+    kexec_get_entry_undo();
+
+    return ret;
 }
 EXPORT_SYMBOL(kexec);
 
