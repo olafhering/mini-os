@@ -168,6 +168,7 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
 {
     int ret;
     unsigned long *func;
+    void *kexec_page;
 
     ret = analyze_kernel(kernel, kernel_size);
     if ( ret )
@@ -191,6 +192,13 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
     if ( ret )
         goto err;
 
+    kexec_page = (void *)alloc_page();
+    if ( !kexec_page )
+    {
+        ret = ENOMEM;
+        goto err;
+    }
+
     for ( func = __kexec_array_start; func < __kexec_array_end; func++ )
     {
         ret = ((kexeccall_t)(*func))(false);
@@ -203,10 +211,15 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
         }
     }
 
-    /* Error exit. */
-    ret = ENOSYS;
+    /* Activate the new kernel. */
+    do_kexec(kexec_page);
+
+    /* do_kexec() shouldn't return, crash. */
+    BUG();
 
  err:
+    if ( kexec_page )
+        free_page(kexec_page);
     change_readonly(true);
     unreserve_memory_below();
     kexec_move_used_pages_undo();
