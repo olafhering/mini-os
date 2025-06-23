@@ -27,6 +27,7 @@
 #define MSR_EFER          0xc0000080
 #define _EFER_LME         8             /* Long mode enable */
 
+#define X86_CR0_PE        0x00000001    /* Protected mode enable */
 #define X86_CR0_WP        0x00010000    /* Write protect */
 #define X86_CR0_PG        0x80000000    /* Paging */
 #define X86_CR4_PAE       0x00000020    /* enable physical address extensions */
@@ -64,9 +65,13 @@
 #if defined(__i386__)
 #define __SZ    "l"
 #define __REG   "e"
+#define ASM_ARG1 "eax"
+#define ASM_ARG2 "edx"
 #else
 #define __SZ    "q"
 #define __REG   "r"
+#define ASM_ARG1 "rdi"
+#define ASM_ARG2 "rsi"
 #endif
 
 #define ASM_SP  __REG"sp"

@@ -85,4 +85,50 @@ page_table_l2:
 #endif
         .align __PAGE_SIZE, 0
 
+#ifdef CONFIG_KEXEC
+.section .text.kexec, "ax", @progbits
+
+/*
+ * Switch off paging and call new OS for kexec.
+ * %ebx holds the physical address of the start_info structure
+ * %edi holds the physical address of the entry point to call
+ */
+.globl kexec_phys
+kexec_phys:
+        /* Set DS, ES, SS to 0...ffffffff. */
+        mov $(GDTE_DS32_DPL0 * 8), %eax
+        mov %eax, %ds
+        mov %eax, %es
+        mov %eax, %ss
+
+#ifdef __x86_64__
+        /* Switch to 32-bit mode. */
+        pushq $(GDTE_CS32_DPL0 * 8)
+        lea cs32_switch(%rip),%edx
+        push %rdx
+        lretq
+
+        .code32
+cs32_switch:
+#endif
+        /* Set %cr0 and %cr4 (disables paging). */
+        mov $X86_CR0_PE, %eax
+        mov %eax, %cr0
+        mov $0, %eax
+        mov %eax, %cr4
+#ifdef __x86_64__
+        /* Disable 64-bit mode. */
+        mov $MSR_EFER, %ecx
+        rdmsr
+        btr $_EFER_LME, %eax
+        wrmsr
+#endif
+
+        jmp *%edi
+
+#ifdef __x86_64__
+        .code64
+#endif
+#endif /* CONFIG_KEXEC */
+
 .text

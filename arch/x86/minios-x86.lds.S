@@ -87,6 +87,15 @@ SECTIONS
 
         _edata = .;			/* End of data section */
 
+        . = ALIGN(8);
+        _kexec_start = .;		/* Kexec relocatable code/data */
+        .kexec : {
+                *(.text.kexec)
+                *(.data.kexec)
+        }
+        _kexec_end = .;
+        ASSERT(_kexec_end - _kexec_start <= 4096, "kexec code/data > 1 page")
+
         __bss_start = .;		/* BSS */
         .bss : {
                 *(.bss)

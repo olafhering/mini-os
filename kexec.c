@@ -58,3 +58,25 @@ int kexec(void *kernel, unsigned long kernel_size, const char *cmdline)
     return ENOSYS;
 }
 EXPORT_SYMBOL(kexec);
+
+struct kexec_action __attribute__((__section__(".data.kexec")))
+    kexec_actions[KEXEC_MAX_ACTIONS];
+static unsigned int act_idx;
+
+int kexec_add_action(int action, void *dest, void *src, unsigned int len)
+{
+    struct kexec_action *act;
+
+    if ( act_idx == KEXEC_MAX_ACTIONS )
+        return -ENOSPC;
+
+    act = kexec_actions + act_idx;
+    act_idx++;
+
+    act->action = action;
+    act->len = len;
+    act->dest = dest;
+    act->src = src;
+
+    return 0;
+}
