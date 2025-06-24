@@ -36,11 +36,6 @@
 #include <xen/hvm/params.h>
 
 /*
- * This pointer holds a reference to the start_info struct.
- */
-start_info_t *start_info_ptr;
-
-/*
  * Shared page for communicating with the hypervisor.
  * Events flags go here, for example.
  */
@@ -68,6 +63,11 @@ static inline void sse_init(void) {
 #endif
 
 #ifdef CONFIG_PARAVIRT
+/*
+ * This pointer holds a reference to the start_info struct.
+ */
+start_info_t *start_info_ptr;
+
 #define hpc_init()
 
 shared_info_t *map_shared_info(void)
@@ -175,7 +175,9 @@ arch_init(void *par)
 {
 	static char hello[] = "Bootstrapping...\n";
 
+#ifdef CONFIG_PARAVIRT
 	start_info_ptr = par;
+#endif
 
 	hpc_init();
 	(void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(hello), hello);
@@ -226,7 +228,11 @@ int arch_suspend(void)
      * This hypercall returns 1 if the suspend
      * was cancelled and 0 if resuming in a new domain
      */
+#ifdef CONFIG_PARAVIRT
     return HYPERVISOR_suspend(virt_to_mfn(start_info_ptr));
+#else
+    return HYPERVISOR_suspend(0);
+#endif
 }
 
 void arch_post_suspend(int canceled)
