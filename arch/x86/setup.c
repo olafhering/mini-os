@@ -227,17 +227,6 @@ void arch_pre_suspend(void)
         virt_to_pfn(mfn_to_virt(start_info_ptr->store_mfn));
     start_info_ptr->console.domU.mfn =
         virt_to_pfn(mfn_to_virt(start_info_ptr->console.domU.mfn));
-#else
-    uint64_t store_v;
-    uint64_t console_v;
-
-    if( hvm_get_parameter(HVM_PARAM_STORE_PFN, &store_v) )
-        BUG();
-    start_info_ptr->store_mfn = store_v;
-
-    if( hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &console_v) )
-        BUG();
-    start_info_ptr->console.domU.mfn = console_v;
 #endif
     unmap_shared_info();
 
@@ -262,17 +251,6 @@ void arch_post_suspend(int canceled)
     } else {
         memcpy(&start_info, start_info_ptr, sizeof(start_info_t));
     }
-#else
-    uint64_t store_v;
-    uint64_t console_v;
-
-    if (hvm_get_parameter(HVM_PARAM_STORE_PFN, &store_v))
-        BUG();
-    start_info_ptr->store_mfn = pfn_to_mfn(store_v);
-
-    if (hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &console_v))
-        BUG();
-    start_info_ptr->console.domU.mfn = pfn_to_mfn(console_v);
 #endif
 
     HYPERVISOR_shared_info = map_shared_info((void*) start_info_ptr);
