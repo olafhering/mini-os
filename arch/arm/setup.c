@@ -40,7 +40,7 @@ void arch_init(void *dtb_pointer, uint32_t physical_offset)
     /* Map shared_info page */
     HYPERVISOR_shared_info = map_shared_info();
 
-    get_console(NULL);
+    get_console();
     get_xenbus(NULL);
 
     gic_init();

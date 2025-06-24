@@ -197,15 +197,15 @@ uint32_t console_evtchn;
 static struct consfront_dev* resume_xen_console(struct consfront_dev *dev);
 
 #ifdef CONFIG_PARAVIRT
-void get_console(void *p)
+void get_console(void)
 {
-    start_info_t *si = p;
+    start_info_t *si = start_info_ptr;
 
     console_ring = mfn_to_virt(si->console.domU.mfn);
     console_evtchn = si->console.domU.evtchn;
 }
 #else
-void get_console(void *p)
+void get_console(void)
 {
     uint64_t v = -1;
 
@@ -411,9 +411,9 @@ void xencons_ring_resume(struct consfront_dev *dev)
     if ( dev )
     {
 #if CONFIG_PARAVIRT
-        get_console(start_info_ptr);
+        get_console();
 #else
-        get_console(0);
+        get_console();
 #endif
         resume_xen_console(dev);
     }

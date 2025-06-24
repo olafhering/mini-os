@@ -76,7 +76,7 @@ void xprintk(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void xencons_rx(char *buf, unsigned len, struct pt_regs *regs);
 void xencons_tx(void);
 
-void get_console(void *p);
+void get_console(void);
 void init_console(void);
 void console_print(struct consfront_dev *dev, const char *data, int length);
 void fini_consfront(struct consfront_dev *dev);

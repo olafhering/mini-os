@@ -193,7 +193,7 @@ arch_init(void *par)
 
 	/* WARN: don't do printk before here, it uses information from
 	   shared_info. Use xprintk instead. */
-	get_console(par);
+	get_console();
 	get_xenbus(par);
 	get_cmdline(par);
 
