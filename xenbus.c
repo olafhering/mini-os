@@ -74,15 +74,15 @@ uint32_t xenbus_evtchn;
 EXPORT_SYMBOL(xenbus_evtchn);
 
 #ifdef CONFIG_PARAVIRT
-void get_xenbus(void *p)
+void get_xenbus(void)
 {
-    start_info_t *si = p;
+    start_info_t *si = start_info_ptr;
 
     xenbus_evtchn = si->store_evtchn;
     xenstore_buf = mfn_to_virt(si->store_mfn);
 }
 #else
-void get_xenbus(void *p)
+void get_xenbus(void)
 {
     uint64_t v;
 
@@ -468,11 +468,8 @@ void resume_xenbus(int canceled)
     struct write_req req[2];
     struct xsd_sockmsg *rep;
 
-#ifdef CONFIG_PARAVIRT
-    get_xenbus(start_info_ptr);
-#else
-    get_xenbus(0);
-#endif
+    get_xenbus();
+
     unmask_evtchn(xenbus_evtchn);
 
     if ( !canceled )

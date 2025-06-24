@@ -12,7 +12,7 @@ extern struct xenstore_domain_interface *xenstore_buf;
 
 /* Initialize the XenBus system. */
 void init_xenbus(void);
-void get_xenbus(void *p);
+void get_xenbus(void);
 #else
 #define xenbus_evtchn ~0
 #define xenstore_buf NULL
@@ -20,7 +20,7 @@ void get_xenbus(void *p);
 static inline void init_xenbus(void)
 {
 }
-static inline void get_xenbus(void *p)
+static inline void get_xenbus(void)
 {
 }
 #endif
