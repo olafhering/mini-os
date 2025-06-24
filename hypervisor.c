@@ -65,7 +65,7 @@ int hvm_set_parameter(int idx, uint64_t value)
     return HYPERVISOR_hvm_op(HVMOP_set_param, &xhv);
 }
 
-shared_info_t *map_shared_info(void *p)
+shared_info_t *map_shared_info(void)
 {
     struct xen_add_to_physmap xatp;
 

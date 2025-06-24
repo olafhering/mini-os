@@ -79,11 +79,10 @@ static inline void sse_init(void) {
 #ifdef CONFIG_PARAVIRT
 #define hpc_init()
 
-shared_info_t *map_shared_info(void *p)
+shared_info_t *map_shared_info(void)
 {
     int rc;
-    start_info_t *si = p;
-    unsigned long pa = si->shared_info;
+    unsigned long pa = start_info_ptr->shared_info;
 
     if ( (rc = HYPERVISOR_update_va_mapping((unsigned long)shared_info,
                                             __pte(pa | 7), UVMF_INVLPG)) )
@@ -185,6 +184,8 @@ arch_init(void *par)
 {
 	static char hello[] = "Bootstrapping...\n";
 
+	start_info_ptr = par;
+
 	hpc_init();
 	(void)HYPERVISOR_console_io(CONSOLEIO_write, strlen(hello), hello);
 
@@ -206,7 +207,7 @@ arch_init(void *par)
 	get_cmdline(par);
 
 	/* Grab the shared_info pointer and put it in a safe place. */
-	HYPERVISOR_shared_info = map_shared_info(par);
+	HYPERVISOR_shared_info = map_shared_info();
 
 	/* print out some useful information  */
 	print_start_of_day(par);
@@ -214,7 +215,6 @@ arch_init(void *par)
 #ifdef CONFIG_PARAVIRT
 	memcpy(&start_info, par, sizeof(start_info));
 #endif
-	start_info_ptr = (start_info_t *)par;
 
 	start_kernel();
 }
@@ -253,7 +253,7 @@ void arch_post_suspend(int canceled)
     }
 #endif
 
-    HYPERVISOR_shared_info = map_shared_info((void*) start_info_ptr);
+    HYPERVISOR_shared_info = map_shared_info();
 #ifndef CONFIG_PARAVIRT
     xen_callback_vector();
 #endif

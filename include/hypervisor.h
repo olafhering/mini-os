@@ -42,7 +42,7 @@ extern union start_info_union start_info_union;
 int hvm_get_parameter(int idx, uint64_t *value);
 int hvm_set_parameter(int idx, uint64_t value);
 #endif
-shared_info_t *map_shared_info(void *p);
+shared_info_t *map_shared_info(void);
 void unmap_shared_info(void);
 void force_evtchn_callback(void);
 void do_hypervisor_callback(struct pt_regs *regs);
