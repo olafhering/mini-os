@@ -411,7 +411,7 @@ void xencons_ring_resume(struct consfront_dev *dev)
     if ( dev )
     {
 #if CONFIG_PARAVIRT
-        get_console(&start_info);
+        get_console(start_info_ptr);
 #else
         get_console(0);
 #endif

@@ -469,7 +469,7 @@ void resume_xenbus(int canceled)
     struct xsd_sockmsg *rep;
 
 #ifdef CONFIG_PARAVIRT
-    get_xenbus(&start_info);
+    get_xenbus(start_info_ptr);
 #else
     get_xenbus(0);
 #endif

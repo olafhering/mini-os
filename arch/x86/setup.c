@@ -35,17 +35,8 @@
 #include <xen/arch-x86/hvm/start_info.h>
 #include <xen/hvm/params.h>
 
-#ifdef CONFIG_PARAVIRT
 /*
- * This structure contains start-of-day info, such as pagetable base pointer,
- * address of the shared_info structure, and things like that.
- */
-union start_info_union start_info_union;
-EXPORT_SYMBOL(start_info_union);
-#endif
-
-/*
- * This pointer holds a reference to the copy of the start_info struct.
+ * This pointer holds a reference to the start_info struct.
  */
 start_info_t *start_info_ptr;
 
@@ -212,10 +203,6 @@ arch_init(void *par)
 	/* print out some useful information  */
 	print_start_of_day(par);
 
-#ifdef CONFIG_PARAVIRT
-	memcpy(&start_info, par, sizeof(start_info));
-#endif
-
 	start_kernel();
 }
 
@@ -248,8 +235,6 @@ void arch_post_suspend(int canceled)
     if (canceled) {
         start_info_ptr->store_mfn = pfn_to_mfn(start_info_ptr->store_mfn);
         start_info_ptr->console.domU.mfn = pfn_to_mfn(start_info_ptr->console.domU.mfn);
-    } else {
-        memcpy(&start_info, start_info_ptr, sizeof(start_info_t));
     }
 #endif
 
