@@ -30,6 +30,8 @@
 #ifdef CONFIG_PARAVIRT
 /* A pointer to the start of day information passed up from the hypervisor. */
 extern start_info_t *start_info_ptr;
+
+#define start_info (*start_info_ptr)
 #else
 int hvm_get_parameter(int idx, uint64_t *value);
 int hvm_set_parameter(int idx, uint64_t value);

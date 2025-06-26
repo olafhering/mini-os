@@ -67,6 +67,7 @@ static inline void sse_init(void) {
  * This pointer holds a reference to the start_info struct.
  */
 start_info_t *start_info_ptr;
+EXPORT_SYMBOL(start_info_ptr);
 
 #define hpc_init()
 
